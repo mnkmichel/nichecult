@@ -34,8 +34,39 @@ if ($userSampleSetId <= 0) {
 try {
     $pdo = getPdo($config);
 
+    $hasColumn = static function (PDO $pdo, string $table, string $column): bool {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name
+               AND COLUMN_NAME = :column_name'
+        );
+        $stmt->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    };
+
+    $sampleSetImageSelect = $hasColumn($pdo, 'sample_sets', 'image_path')
+        ? 'ss.image_path'
+        : 'NULL AS image_path';
+
+    $perfumeImageSelect = $hasColumn($pdo, 'perfumes', 'image_path')
+        ? 'p.image_path'
+        : 'NULL AS image_path';
+
+    $perfumeSizeSelect = $hasColumn($pdo, 'perfumes', 'size_ml')
+        ? 'p.size_ml'
+        : 'NULL AS size_ml';
+
+    $perfumePriceSelect = $hasColumn($pdo, 'perfumes', 'price_cents')
+        ? 'p.price_cents'
+        : '0 AS price_cents';
+
     $setStmt = $pdo->prepare(
-        'SELECT
+        "SELECT
             uss.id AS user_sample_set_id,
             uss.set_status,
             uss.assigned_at,
@@ -43,11 +74,11 @@ try {
             ss.id AS sample_set_id,
             ss.title,
             ss.description,
-            ss.image_path
+            {$sampleSetImageSelect}
          FROM user_sample_sets uss
          INNER JOIN sample_sets ss ON ss.id = uss.sample_set_id
          WHERE uss.id = :user_sample_set_id AND uss.user_id = :user_id
-         LIMIT 1'
+         LIMIT 1"
     );
     $setStmt->execute([
         'user_sample_set_id' => $userSampleSetId,
@@ -62,12 +93,14 @@ try {
     $set['image_url'] = publicAssetUrl($set['image_path'] ?? null);
 
     $itemsStmt = $pdo->prepare(
-        'SELECT
+        "SELECT
             p.id AS perfume_id,
             p.name,
             p.brand_name,
             p.description,
-            p.image_path,
+            {$perfumeImageSelect},
+            {$perfumeSizeSelect},
+            {$perfumePriceSelect},
             ssi.sort_order,
             r.id AS rating_id,
             r.overall_score,
@@ -79,7 +112,7 @@ try {
            ON r.user_sample_set_id = :user_sample_set_id
           AND r.perfume_id = p.id
          WHERE ssi.sample_set_id = :sample_set_id
-         ORDER BY ssi.sort_order ASC'
+                 ORDER BY ssi.sort_order ASC"
     );
     $itemsStmt->execute([
         'user_sample_set_id' => $userSampleSetId,
@@ -91,10 +124,31 @@ try {
         return $perfume;
     }, $itemsStmt->fetchAll());
 
+    $favoritePerfumeId = null;
+    $favoriteScore = -1.0;
+
+    foreach ($perfumes as $perfume) {
+        if ($perfume['overall_score'] === null) {
+            continue;
+        }
+
+        $score = (
+            (float) ($perfume['overall_score'] ?? 0)
+            + (float) ($perfume['longevity_score'] ?? 0)
+            + (float) ($perfume['sillage_score'] ?? 0)
+        ) / 3;
+
+        if ($score > $favoriteScore) {
+            $favoriteScore = $score;
+            $favoritePerfumeId = (int) $perfume['perfume_id'];
+        }
+    }
+
     jsonResponse([
         'ok' => true,
         'sampleSet' => $set,
         'perfumes' => $perfumes,
+        'favoritePerfumeId' => $favoritePerfumeId,
     ]);
 } catch (Throwable $e) {
     jsonResponse([

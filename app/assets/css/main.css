@@ -1,1 +1,85 @@
 @import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+	--nc-ink: #1a1717;
+	--nc-soft-ink: #3d3837;
+	--nc-sand-1: #f7f1e6;
+	--nc-sand-2: #eee3cf;
+	--nc-sand-3: #e6d8bf;
+	--nc-line: #cfc4b3;
+	--nc-accent: #a34f13;
+	--nc-accent-soft: #f6dfc9;
+}
+
+@layer base {
+	body {
+		font-family: 'Manrope', sans-serif;
+		color: var(--nc-ink);
+		background: linear-gradient(160deg, var(--nc-sand-1) 0%, var(--nc-sand-2) 48%, var(--nc-sand-3) 100%);
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: 'Cormorant Garamond', serif;
+		letter-spacing: 0.01em;
+	}
+}
+
+@layer components {
+	.nc-shell {
+		@apply rounded-[28px] border bg-white/65 shadow-sm backdrop-blur;
+		border-color: var(--nc-line);
+	}
+
+	.nc-page {
+		@apply min-h-screen px-4 py-8 md:px-6;
+	}
+
+	.nc-page-frame {
+		@apply mx-auto w-full max-w-7xl;
+	}
+
+	.nc-tab-bar {
+		@apply inline-flex flex-wrap gap-2 rounded-2xl border bg-white/85 p-2 shadow-sm;
+		border-color: var(--nc-line);
+	}
+
+	.nc-tab {
+		@apply rounded-xl border px-5 py-3 text-sm font-semibold transition;
+		border-color: #d2c9bb;
+		color: var(--nc-soft-ink);
+		background: #fffdfa;
+	}
+
+	.nc-tab:hover {
+		background: #f6efe4;
+	}
+
+	.nc-tab-active {
+		@apply rounded-xl px-5 py-3 text-sm font-semibold text-white shadow;
+		background: #161313;
+	}
+
+	.nc-tab-open {
+		@apply rounded-xl px-5 py-3 text-sm font-semibold text-white shadow;
+		background: var(--nc-accent);
+	}
+
+	.nc-enter {
+		animation: nc-rise 420ms ease-out both;
+	}
+}
+
+@keyframes nc-rise {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

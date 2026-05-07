@@ -3,130 +3,266 @@ definePageMeta({
   middleware: 'auth',
 })
 
-type StepQuestion = {
-  key: string
-  title: string
-  helper: string
-  options: string[]
-}
+// Step types
+type ChoiceStep = { type: 'choice'; key: string; title: string; layout: 'pair' | 'stack' | 'grid5'; options: string[] }
+type SliderStep = { type: 'slider'; key: string; title: string; leftLabel: string; rightLabel: string; centerLabel: string }
+type Step = ChoiceStep | SliderStep
 
-const steps: StepQuestion[] = [
-  { key: 'mood', title: 'Wie soll der Duft wirken?', helper: 'Page 3', options: ['Elegant', 'Clean', 'Warm', 'Kraftvoll'] },
-  { key: 'intensity', title: 'Welche Intensitaet bevorzugst du?', helper: 'Page 4', options: ['Leicht', 'Mittel', 'Intensiv', 'Sehr intensiv'] },
-  { key: 'season', title: 'Fokus-Jahreszeit', helper: 'Page 5', options: ['Fruehling', 'Sommer', 'Herbst', 'Winter'] },
-  { key: 'occasion', title: 'Wofuer suchst du den Duft?', helper: 'Page 6', options: ['Alltag', 'Office', 'Date Night', 'Event'] },
-  { key: 'notes', title: 'Welche Noten magst du?', helper: 'Page 7', options: ['Zitrisch', 'Holzig', 'Orientalisch', 'Floral'] },
-  { key: 'projection', title: 'Sillage-Profil', helper: 'Page 8', options: ['Diskret', 'Ausgewogen', 'Praesent', 'Raumfuellend'] },
-  { key: 'longevity', title: 'Haltbarkeit', helper: 'Page 9', options: ['4-6h', '6-8h', '8-10h', '10h+'] },
-  { key: 'budget', title: 'Budget pro 100 ml', helper: 'Page 10', options: ['<120 EUR', '120-180 EUR', '180-250 EUR', '250+ EUR'] },
+const steps: Step[] = [
+  {
+    type: 'choice',
+    key: 'gender',
+    title: 'Für wen suchen Sie ein Parfum?',
+    layout: 'pair',
+    options: ['Mann', 'Frau'],
+  },
+  {
+    type: 'choice',
+    key: 'season',
+    title: 'Zu welcher Jahreszeit soll das Parfum passen?',
+    layout: 'stack',
+    options: ['Frühling und Sommer', 'Herbst und Winter', 'Offen lassen'],
+  },
+  {
+    type: 'choice',
+    key: 'occasion',
+    title: 'Zu welchem Anlass soll das Parfüm passen?',
+    layout: 'grid5',
+    options: ['Freizeit und Alltag', 'Geschäftliches Umfeld', 'Besondere Abendanlässe', 'Sport', 'Offen lassen'],
+  },
+  {
+    type: 'slider',
+    key: 'character',
+    title: 'Sollte Ihr Parfum eher einen frischen oder warmen Character haben?',
+    leftLabel: 'Warm',
+    rightLabel: 'Frisch',
+    centerLabel: 'Keine Präferenz',
+  },
+  {
+    type: 'slider',
+    key: 'intensity',
+    title: 'Sollte Ihr Parfum eher intensiv oder dezent sein?',
+    leftLabel: 'Intensiv',
+    rightLabel: 'Dezent',
+    centerLabel: 'Neutral',
+  },
 ]
 
 const currentStep = ref(0)
-const answers = reactive<Record<string, string>>({})
+const answers = reactive<Record<string, string | number>>({})
 const finished = ref(false)
+const alreadyCompleted = ref(false)
+
+const step = computed(() => steps[currentStep.value])
 
 const canContinue = computed(() => {
-  const current = steps[currentStep.value]
-  return Boolean(answers[current.key])
+  const s = step.value
+  if (s.type === 'slider') return answers[s.key] !== undefined
+  return Boolean(answers[s.key])
 })
 
-const progress = computed(() => Math.round(((currentStep.value + 1) / steps.length) * 100))
+// Initialize slider defaults to center (index 2 = middle of 5)
+watch(currentStep, (idx) => {
+  const s = steps[idx]
+  if (s.type === 'slider' && answers[s.key] === undefined) {
+    answers[s.key] = 2
+  }
+})
 
 const selectOption = (value: string) => {
-  answers[steps[currentStep.value].key] = value
+  answers[step.value.key] = value
 }
 
-const goBack = () => {
-  if (currentStep.value > 0) {
-    currentStep.value -= 1
-  }
+const setSlider = (idx: number) => {
+  answers[step.value.key] = idx
 }
 
 const goNext = () => {
-  if (!canContinue.value) {
-    return
-  }
-
+  if (!canContinue.value) return
   if (currentStep.value < steps.length - 1) {
     currentStep.value += 1
     return
   }
-
   localStorage.setItem('nichecult_duftkuration_done', '1')
   finished.value = true
+  alreadyCompleted.value = false
 }
 
-const openSamples = async () => {
-  await navigateTo('/sets')
+const goBack = () => {
+  if (currentStep.value > 0) currentStep.value -= 1
 }
+
+onMounted(() => {
+  const done = localStorage.getItem('nichecult_duftkuration_done') === '1'
+  if (done) {
+    finished.value = true
+    alreadyCompleted.value = true
+  }
+})
 </script>
 
 <template>
-  <main class="min-h-screen bg-[linear-gradient(165deg,#1d1a17_0%,#2b251e_45%,#3c3126_100%)] px-4 py-8 text-stone-100">
-    <div class="mx-auto max-w-4xl">
-      <header class="mb-8 space-y-5">
-        <div>
-          <p class="text-xs uppercase tracking-[0.28em] text-amber-300">Nichecult</p>
-          <h1 class="mt-2 text-3xl font-bold md:text-4xl">Duft-Kuration</h1>
+  <!-- Step screens -->
+  <div v-if="!finished" class="nc-page flex flex-col bg-[#f5f0e8] text-[#1a1612]">
+    <div class="nc-page-frame flex flex-1 flex-col">
+      <SiteHeaderNav title="Duft-Kuration" active="duftkuration" />
+
+      <div class="mx-auto flex w-full max-w-3xl flex-1 flex-col">
+
+        <!-- Title -->
+        <h1 class="text-3xl leading-tight text-[#1a1612] md:text-5xl lg:text-[54px]">
+          {{ step.title }}
+        </h1>
+
+        <!-- Options area -->
+        <div class="mt-12 flex flex-1 flex-col justify-center md:mt-16">
+
+        <!-- Choice: pair (Mann/Frau) -->
+        <div v-if="step.type === 'choice' && step.layout === 'pair'" class="flex justify-between gap-6">
+          <button
+            v-for="opt in (step as ChoiceStep).options"
+            :key="opt"
+            type="button"
+            class="flex-1 rounded-2xl px-8 py-7 text-lg font-medium transition md:text-2xl"
+            :class="answers[step.key] === opt
+              ? 'bg-[#8e6c2a] text-[#f5f0e8]'
+              : 'bg-[#b99a57] text-[#1a1612] hover:brightness-95'"
+            @click="selectOption(opt)"
+          >
+            {{ opt }}
+          </button>
         </div>
 
-        <nav class="inline-flex rounded-2xl border border-stone-600 bg-stone-900/70 p-1">
-          <NuxtLink to="/parfum" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-200 hover:bg-stone-800">Parfum</NuxtLink>
-          <span class="rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-stone-950">Duft-Kuration</span>
-          <NuxtLink to="/sets" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-200 hover:bg-stone-800">Ihre Samples</NuxtLink>
-        </nav>
-      </header>
-
-      <section class="rounded-3xl border border-stone-700 bg-stone-950/55 p-6 shadow-2xl md:p-8">
-        <template v-if="!finished">
-          <div class="mb-6 flex items-center justify-between gap-3">
-            <p class="text-sm font-semibold text-stone-300">{{ steps[currentStep].helper }} von Page 3 bis 10</p>
-            <p class="text-sm font-semibold text-amber-300">{{ progress }}%</p>
-          </div>
-
-          <div class="h-2 overflow-hidden rounded-full bg-stone-800">
-            <div class="h-full rounded-full bg-amber-400 transition-all" :style="{ width: `${progress}%` }"></div>
-          </div>
-
-          <h2 class="mt-8 text-2xl font-semibold">{{ steps[currentStep].title }}</h2>
-          <p class="mt-2 text-sm text-stone-300">Waehle eine Option, dann gehe weiter.</p>
-
-          <div class="mt-6 grid gap-3 md:grid-cols-2">
-            <button
-              v-for="option in steps[currentStep].options"
-              :key="option"
-              type="button"
-              class="rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition"
-              :class="answers[steps[currentStep].key] === option
-                ? 'border-amber-300 bg-amber-300 text-stone-950'
-                : 'border-stone-700 bg-stone-900/60 text-stone-100 hover:bg-stone-800'"
-              @click="selectOption(option)"
-            >
-              {{ option }}
-            </button>
-          </div>
-
-          <div class="mt-8 flex flex-wrap justify-between gap-3">
-            <button type="button" class="rounded-xl border border-stone-600 px-4 py-2 text-sm font-semibold hover:bg-stone-800" @click="goBack">
-              Zurueck
-            </button>
-            <button type="button" :disabled="!canContinue" class="rounded-xl bg-amber-400 px-5 py-2 text-sm font-semibold text-stone-950 disabled:opacity-50" @click="goNext">
-              {{ currentStep === steps.length - 1 ? 'Abschliessen' : 'Weiter' }}
-            </button>
-          </div>
-        </template>
-
-        <template v-else>
-          <p class="text-xs uppercase tracking-[0.28em] text-emerald-300">Abgeschlossen</p>
-          <h2 class="mt-3 text-3xl font-bold">Ihre Duft-Kuration ist fertig</h2>
-          <p class="mt-3 max-w-2xl text-stone-300">
-            Der Unter-Reiter Ihre Samples ist jetzt freigeschaltet. Dort kannst du Samples oeffnen, bewerten und den Status auf Abgeschlossen bringen.
-          </p>
-          <button type="button" class="mt-6 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-stone-950 hover:bg-emerald-400" @click="openSamples">
-            Zu Ihren Samples
+        <!-- Choice: stack (Jahreszeit) -->
+        <div v-else-if="step.type === 'choice' && step.layout === 'stack'" class="mx-auto flex w-full max-w-sm flex-col gap-4">
+          <button
+            v-for="opt in (step as ChoiceStep).options"
+            :key="opt"
+            type="button"
+            class="rounded-2xl px-8 py-6 text-center text-lg font-medium transition md:text-xl"
+            :class="answers[step.key] === opt
+              ? 'bg-[#8e6c2a] text-[#f5f0e8]'
+              : 'bg-[#b99a57] text-[#1a1612] hover:brightness-95'"
+            @click="selectOption(opt)"
+          >
+            {{ opt }}
           </button>
-        </template>
-      </section>
+        </div>
+
+        <!-- Choice: grid5 (Anlass) -->
+        <div v-else-if="step.type === 'choice' && step.layout === 'grid5'" class="flex flex-col gap-4">
+          <div class="grid grid-cols-2 gap-4">
+            <button
+              v-for="opt in (step as ChoiceStep).options.slice(0, 4)"
+              :key="opt"
+              type="button"
+              class="rounded-2xl px-6 py-6 text-center text-base font-medium leading-snug transition md:text-lg"
+              :class="answers[step.key] === opt
+                ? 'bg-[#8e6c2a] text-[#f5f0e8]'
+                : 'bg-[#b99a57] text-[#1a1612] hover:brightness-95'"
+              @click="selectOption(opt)"
+            >
+              {{ opt }}
+            </button>
+          </div>
+          <div class="flex justify-center">
+            <button
+              type="button"
+              class="rounded-2xl px-10 py-6 text-center text-base font-medium transition md:text-lg"
+              :class="answers[step.key] === (step as ChoiceStep).options[4]
+                ? 'bg-[#8e6c2a] text-[#f5f0e8]'
+                : 'bg-[#b99a57] text-[#1a1612] hover:brightness-95'"
+              @click="selectOption((step as ChoiceStep).options[4])"
+            >
+              {{ (step as ChoiceStep).options[4] }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Slider -->
+        <div v-else-if="step.type === 'slider'" class="mt-8">
+          <!-- Labels row -->
+          <div class="relative flex justify-between text-base font-medium md:text-lg">
+            <span>{{ (step as SliderStep).leftLabel }}</span>
+            <span class="absolute left-1/2 -translate-x-1/2">{{ (step as SliderStep).centerLabel }}</span>
+            <span>{{ (step as SliderStep).rightLabel }}</span>
+          </div>
+          <!-- Track -->
+          <div class="relative mt-5 flex items-center">
+            <div class="absolute left-0 right-0 h-px bg-[#b99a57]" />
+            <div class="relative flex w-full justify-between">
+              <button
+                v-for="i in 5"
+                :key="i"
+                type="button"
+                class="relative h-9 w-9 rounded-md border-2 transition"
+                :class="answers[step.key] === (i - 1)
+                  ? 'border-[#8e6c2a] bg-[#8e6c2a]'
+                  : 'border-[#b99a57] bg-[#f5f0e8] hover:bg-[#e8ddc8]'"
+                @click="setSlider(i - 1)"
+              />
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="mt-10 flex justify-between">
+          <button
+            v-if="currentStep > 0"
+            type="button"
+            class="rounded-xl border border-[#c8b48a] px-6 py-3 text-sm font-medium text-[#5a4820] transition hover:bg-[#ede5d4]"
+            @click="goBack"
+          >
+            Zurück
+          </button>
+          <div v-else />
+          <button
+            type="button"
+            :disabled="!canContinue"
+            class="rounded-xl px-7 py-3 text-sm font-semibold transition disabled:opacity-40"
+            :class="canContinue ? 'bg-[#b99a57] text-[#1a1612] hover:brightness-95' : 'bg-[#b99a57] text-[#1a1612]'"
+            @click="goNext"
+          >
+            {{ currentStep === steps.length - 1 ? 'Abschliessen' : 'Weiter' }}
+          </button>
+        </div>
+      </div>
     </div>
-  </main>
+  </div>
+
+  <!-- Completion screen -->
+  <div v-else class="nc-page relative flex overflow-hidden bg-white text-[#1a1612]">
+    <!-- Diagonal warm triangle -->
+    <div class="pointer-events-none absolute inset-0">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" class="h-full w-full">
+        <polygon points="50,0 100,0 100,100" fill="#f5f0e8" />
+      </svg>
+    </div>
+    <!-- Content -->
+    <div class="nc-page-frame relative z-10 flex w-full flex-col">
+      <SiteHeaderNav title="Duft-Kuration" active="duftkuration" />
+
+      <div class="flex flex-1 flex-col">
+        <h1 class="max-w-2xl text-3xl leading-tight md:text-5xl">
+          <template v-if="alreadyCompleted">
+            Ihre Duft-Kuration ist bereits abgeschlossen.<br>
+            Ihre Samples stehen für Sie bereit.
+          </template>
+          <template v-else>
+            Ihr Duftprofil wurde erstellt.<br>
+            Wir kuratieren nun Ihre erste Persönliche Duftselektion.
+          </template>
+        </h1>
+        <div class="flex flex-1 items-end justify-end pt-20">
+          <NuxtLink
+            to="/sets"
+            class="rounded-xl bg-[#8e6c2a] px-8 py-4 text-base font-semibold text-white transition hover:brightness-110"
+          >
+            {{ alreadyCompleted ? 'Zu Ihren Samples' : 'Weiter' }}
+          </NuxtLink>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>

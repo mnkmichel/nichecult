@@ -51,50 +51,38 @@ const loadPageData = async () => {
   }
 }
 
-const logout = async () => {
-  localStorage.removeItem('nichecult_token')
-  await navigateTo('/login')
+const openSet = async (userSampleSetId: unknown) => {
+  const id = Number(userSampleSetId)
+  if (!Number.isFinite(id) || id <= 0) {
+    error.value = 'Dieses Sample-Set konnte nicht geoeffnet werden (ungueltige ID).'
+    return
+  }
+
+  await navigateTo(`/sets/${id}`)
 }
 
 onMounted(loadPageData)
 </script>
 
 <template>
-  <main class="min-h-screen bg-stone-100 px-4 py-8">
-    <div class="mx-auto max-w-6xl">
-      <header class="mb-8 space-y-5">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p class="text-xs uppercase tracking-[0.2em] text-amber-700">Nichecult</p>
-            <h1 class="text-3xl font-bold">Meine Sample-Sets</h1>
-          </div>
+  <main class="nc-page">
+    <div class="nc-page-frame">
+      <SiteHeaderNav title="Ihre Samples" active="samples" />
 
-          <button class="rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-stone-50" @click="logout">
-            Logout
-          </button>
-        </div>
-
-        <nav class="inline-flex rounded-2xl border border-stone-300 bg-white p-1 shadow-sm">
-          <NuxtLink to="/parfum" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum</NuxtLink>
-          <NuxtLink to="/duftkuration" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Duft-Kuration</NuxtLink>
-          <span class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Ihre Samples</span>
-        </nav>
-      </header>
-
-      <div v-if="loading" class="rounded-xl border border-stone-200 bg-white p-5 text-stone-600">Lade Daten...</div>
+      <div v-if="loading" class="nc-shell p-5 text-stone-600">Lade Daten...</div>
       <div v-else-if="error" class="rounded-xl border border-red-200 bg-red-50 p-5 text-red-700">{{ error }}</div>
 
       <section v-else class="space-y-6">
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
+        <div class="nc-shell border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
           Eingeloggt als {{ profile?.email }}
         </div>
 
-        <div v-if="sampleSets.length === 0" class="rounded-xl border border-stone-200 bg-white p-5 text-stone-600">
+        <div v-if="sampleSets.length === 0" class="nc-shell p-5 text-stone-600">
           Noch keine Sample-Sets zugewiesen.
         </div>
 
         <div v-else class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          <article v-for="item in sampleSets" :key="item.user_sample_set_id" class="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+          <article v-for="item in sampleSets" :key="item.user_sample_set_id" class="nc-shell overflow-hidden bg-white/90">
             <img v-if="item.image_url" :src="item.image_url" alt="Setbild" class="h-52 w-full object-cover" />
             <div class="p-5">
               <p class="text-xs uppercase tracking-[0.2em] text-stone-500">{{ item.perfume_count }} Parfums</p>
@@ -102,9 +90,13 @@ onMounted(loadPageData)
               <p v-if="item.description" class="mt-2 text-sm text-stone-600">{{ item.description }}</p>
               <p class="mt-3 text-sm text-stone-500">Status: {{ statusLabel(item.set_status) }}</p>
 
-              <NuxtLink :to="`/sets/${item.user_sample_set_id}`" class="mt-5 block rounded-xl bg-stone-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-stone-800">
+              <button
+                type="button"
+                class="mt-5 block w-full rounded-xl bg-stone-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-stone-800"
+                @click="openSet(item.user_sample_set_id)"
+              >
                 Set oeffnen
-              </NuxtLink>
+              </button>
             </div>
           </article>
         </div>

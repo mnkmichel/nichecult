@@ -12,11 +12,11 @@ const perfumes = ref<Array<Record<string, any>>>([])
 const ratingByPerfumeId = ref<Record<number, number>>({})
 
 const curatedFallback = [
-  { id: -1, name: 'Acqua di Parma Arancia di Capri', brand_name: 'Acqua di Parma', price_cents: 16500 },
-  { id: -2, name: 'Acqua di Parma Oud', brand_name: 'Acqua di Parma', price_cents: 18900 },
-  { id: -3, name: 'Parfums de Marly Oajan', brand_name: 'Parfums de Marly', price_cents: 24500 },
-  { id: -4, name: 'Creed Original Santal', brand_name: 'Creed', price_cents: 27900 },
-  { id: -5, name: 'Xerjoff Accento', brand_name: 'Xerjoff', price_cents: 26500 },
+  { name: 'Acqua di Parma Arancia di Capri', brand_name: 'Acqua di Parma', price_cents: 16500 },
+  { name: 'Acqua di Parma Oud', brand_name: 'Acqua di Parma', price_cents: 18900 },
+  { name: 'Parfums de Marly Oajan', brand_name: 'Parfums de Marly', price_cents: 24500 },
+  { name: 'Creed Original Santal', brand_name: 'Creed', price_cents: 27900 },
+  { name: 'Xerjoff Accento', brand_name: 'Xerjoff', price_cents: 26500 },
 ]
 
 const priceLabel = (cents: number) => {
@@ -36,7 +36,7 @@ const mergedPerfumes = computed(() => {
     const exists = items.some(item => String(item.name).toLowerCase() === fallback.name.toLowerCase())
     if (!exists) {
       items.push({
-        id: fallback.id,
+        id: -Math.floor(Math.random() * 1000000),
         ...fallback,
         description: 'Kuratiertes Starter-Sample',
         image_url: null,
@@ -123,7 +123,11 @@ const loadData = async () => {
         if (!scoreBucket[perfume.perfume_id]) {
           scoreBucket[perfume.perfume_id] = []
         }
-        scoreBucket[perfume.perfume_id].push(score)
+
+        const bucket = scoreBucket[perfume.perfume_id]
+        if (bucket) {
+          bucket.push(score)
+        }
       }
     }
 
@@ -144,20 +148,9 @@ onMounted(loadData)
 </script>
 
 <template>
-  <main class="min-h-screen bg-[linear-gradient(180deg,#f6f2ea_0%,#fffaf1_45%,#f7efe0_100%)] px-4 py-8 text-stone-900">
-    <div class="mx-auto max-w-7xl">
-      <header class="mb-7 space-y-5">
-        <div>
-          <p class="text-xs uppercase tracking-[0.28em] text-amber-800">Nichecult</p>
-          <h1 class="mt-2 text-3xl font-bold md:text-4xl">Parfum</h1>
-        </div>
-
-        <nav class="inline-flex rounded-2xl border border-stone-300 bg-white p-1 shadow-sm">
-          <span class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum</span>
-          <NuxtLink to="/duftkuration" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Duft-Kuration</NuxtLink>
-          <NuxtLink to="/sets" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Ihre Samples</NuxtLink>
-        </nav>
-      </header>
+  <main class="nc-page bg-[linear-gradient(180deg,#f6f2ea_0%,#fffaf1_45%,#f7efe0_100%)] text-stone-900">
+    <div class="nc-page-frame">
+      <SiteHeaderNav title="Parfum" active="parfum" />
 
       <section class="rounded-3xl border border-stone-200 bg-white/90 p-5 shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3">

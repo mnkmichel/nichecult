@@ -11,7 +11,7 @@ require __DIR__ . '/lib/jwt.php';
 setCorsHeaders($config);
 handlePreflightAndExit();
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     jsonResponse(['ok' => false, 'error' => 'Method not allowed'], 405);
 }
 
@@ -25,32 +25,25 @@ if (!$claims || empty($claims['admin'])) {
     jsonResponse(['ok' => false, 'error' => 'Admin access required'], 403);
 }
 
+$id = (int) ($_POST['id'] ?? 0);
+if ($id <= 0) {
+    jsonResponse(['ok' => false, 'error' => 'Invalid sample set id'], 400);
+}
+
 try {
     $pdo = getPdo($config);
+    $stmt = $pdo->prepare('DELETE FROM sample_sets WHERE id = :id');
+    $stmt->execute(['id' => $id]);
 
-    $stmt = $pdo->query(
-        'SELECT
-            u.id,
-            u.email,
-            u.first_name,
-            u.last_name,
-            u.is_admin,
-            u.created_at,
-                COUNT(uss.id) AS sample_count
-         FROM users u
-            LEFT JOIN user_sample_sets uss ON uss.user_id = u.id
-         GROUP BY u.id
-         ORDER BY u.created_at DESC'
-    );
+    if ($stmt->rowCount() < 1) {
+        jsonResponse(['ok' => false, 'error' => 'Sample set not found'], 404);
+    }
 
-    jsonResponse([
-        'ok' => true,
-        'users' => $stmt->fetchAll(),
-    ]);
+    jsonResponse(['ok' => true]);
 } catch (Throwable $e) {
     jsonResponse([
         'ok' => false,
-        'error' => 'User lookup failed',
+        'error' => 'Sample set delete failed',
         'details' => $e->getMessage(),
     ], 500);
 }

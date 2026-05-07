@@ -26,7 +26,7 @@ const submit = async () => {
     const meRes = await me(res.token)
     profile.value = meRes.user || null
 
-    await navigateTo('/sets')
+    await navigateTo('/')
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler beim Login'
   } finally {

@@ -26,23 +26,76 @@ if (!$claims || empty($claims['admin'])) {
     jsonResponse(['ok' => false, 'error' => 'Admin access required'], 403);
 }
 
+$id = (int) ($_POST['id'] ?? 0);
 $name = trim((string) ($_POST['name'] ?? ''));
 $brandName = trim((string) ($_POST['brand_name'] ?? ''));
 $description = trim((string) ($_POST['description'] ?? ''));
-$sizeMl = isset($_POST['size_ml']) ? (int) $_POST['size_ml'] : null;
 $priceCents = (int) ($_POST['price_cents'] ?? 0);
 $discountPercent = (int) ($_POST['discount_percent'] ?? 0);
 $isActive = (int) ($_POST['is_active'] ?? 1) === 1 ? 1 : 0;
+$sizeMl = isset($_POST['size_ml']) ? (int) $_POST['size_ml'] : null;
+
+if ($id <= 0) {
+    jsonResponse(['ok' => false, 'error' => 'Invalid perfume id'], 400);
+}
 
 if ($name === '') {
     jsonResponse(['ok' => false, 'error' => 'Perfume name is required'], 400);
 }
 
 try {
-    $imagePath = saveUploadedImage();
     $pdo = getPdo($config);
-    $stmt = $pdo->prepare('INSERT INTO perfumes (name, brand_name, description, image_path, size_ml, price_cents, discount_percent, is_active) VALUES (:name, :brand_name, :description, :image_path, :size_ml, :price_cents, :discount_percent, :is_active)');
+
+    $hasColumn = static function (PDO $pdo, string $table, string $column): bool {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name
+               AND COLUMN_NAME = :column_name'
+        );
+        $stmt->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    };
+
+    $existingStmt = $pdo->prepare('SELECT image_path FROM perfumes WHERE id = :id LIMIT 1');
+    $existingStmt->execute(['id' => $id]);
+    $existing = $existingStmt->fetch();
+    if (!$existing) {
+        jsonResponse(['ok' => false, 'error' => 'Perfume not found'], 404);
+    }
+
+    $imagePath = $existing['image_path'] ?? null;
+    $uploadedPath = saveUploadedImage();
+    if ($uploadedPath !== null) {
+        $imagePath = $uploadedPath;
+    }
+
+    $updateFields = [
+        'name = :name',
+        'brand_name = :brand_name',
+        'description = :description',
+        'image_path = :image_path',
+        'size_ml = :size_ml',
+        'price_cents = :price_cents',
+        'discount_percent = :discount_percent',
+        'is_active = :is_active',
+    ];
+
+    if ($hasColumn($pdo, 'perfumes', 'updated_at')) {
+        $updateFields[] = 'updated_at = CURRENT_TIMESTAMP';
+    }
+
+    $stmt = $pdo->prepare(
+        'UPDATE perfumes
+         SET ' . implode(",\n             ", $updateFields) . '
+         WHERE id = :id'
+    );
     $stmt->execute([
+        'id' => $id,
         'name' => $name,
         'brand_name' => $brandName !== '' ? $brandName : null,
         'description' => $description !== '' ? $description : null,
@@ -56,7 +109,7 @@ try {
     jsonResponse([
         'ok' => true,
         'perfume' => [
-            'id' => (int) $pdo->lastInsertId(),
+            'id' => $id,
             'name' => $name,
             'brand_name' => $brandName,
             'description' => $description,
@@ -66,11 +119,11 @@ try {
             'is_active' => $isActive,
             'image_url' => publicAssetUrl($imagePath),
         ],
-    ], 201);
+    ]);
 } catch (Throwable $e) {
     jsonResponse([
         'ok' => false,
-        'error' => 'Perfume creation failed',
+        'error' => 'Perfume update failed',
         'details' => $e->getMessage(),
     ], 500);
 }

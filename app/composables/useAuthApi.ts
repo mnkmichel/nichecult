@@ -40,9 +40,22 @@ type PerfumeItem = {
   description: string | null
   image_path?: string | null
   image_url?: string | null
+  size_ml?: number | null
   price_cents?: number
   discount_percent?: number
   is_active?: number | boolean
+}
+
+type AdminSampleSet = {
+  id: number
+  title: string
+  description: string | null
+  image_path?: string | null
+  image_url?: string | null
+  status: 'active' | 'inactive'
+  perfume_count: number
+  assigned_count: number
+  perfume_ids: number[]
 }
 
 type SampleSetItem = {
@@ -65,6 +78,8 @@ type SampleSetDetailPerfume = {
   description: string | null
   image_path?: string | null
   image_url?: string | null
+  size_ml?: number | null
+  price_cents?: number
   sort_order: number
   rating_id?: number | null
   overall_score?: number | null
@@ -150,6 +165,14 @@ export const useAuthApi = () => {
     })
   }
 
+  const listAdminSampleSets = async (token: string) => {
+    return await $fetch<{ ok: boolean; sampleSets?: AdminSampleSet[]; error?: string }>(`${apiBase.value}/admin-list-sample-sets.php`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  }
+
   const listPerfumes = async () => {
     return await $fetch<{ ok: boolean; perfumes?: PerfumeItem[]; error?: string }>(`${apiBase.value}/perfumes.php`)
   }
@@ -163,7 +186,7 @@ export const useAuthApi = () => {
   }
 
   const getSampleSetDetail = async (token: string, userSampleSetId: number) => {
-    return await $fetch<{ ok: boolean; sampleSet?: Record<string, unknown>; perfumes?: SampleSetDetailPerfume[]; error?: string }>(`${apiBase.value}/sample-set-detail.php`, {
+    return await $fetch<{ ok: boolean; sampleSet?: Record<string, unknown>; perfumes?: SampleSetDetailPerfume[]; favoritePerfumeId?: number | null; error?: string }>(`${apiBase.value}/sample-set-detail.php`, {
       query: {
         user_sample_set_id: userSampleSetId,
       },
@@ -191,6 +214,7 @@ export const useAuthApi = () => {
     saveSampleRating,
     listAdminUsers,
     listAdminPerfumes,
+    listAdminSampleSets,
     listPerfumes,
     listSampleSets,
     getSampleSetDetail,
