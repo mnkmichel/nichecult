@@ -1,0 +1,17 @@
+RewriteEngine On
+
+# Forward Authorization header for PHP under CGI/FastCGI (required for Bearer token auth)
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Basic API hardening headers
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options SAMEORIGIN
+Header always set Referrer-Policy strict-origin-when-cross-origin
+
+# Allow direct endpoint files
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Optional fallback to health endpoint for root
+RewriteRule ^$ health.php [L]
