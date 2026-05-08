@@ -42,7 +42,7 @@ try {
         $baseUrl = $appUrl !== '' ? rtrim($appUrl, '/') : 'https://nichecult.de';
         $resetUrl = $baseUrl . '/reset-password?token=' . urlencode($rawToken);
 
-        $subject = 'Nichecult Passwort zuruecksetzen';
+        $subject = 'Nice Cult Passwort zuruecksetzen';
         $message = "Hallo,\n\nSie haben angefordert, Ihr Passwort zurueckzusetzen.\n" .
             "Bitte nutzen Sie diesen Link (60 Minuten gueltig):\n" .
             $resetUrl . "\n\n" .
@@ -51,7 +51,7 @@ try {
         $headers = [
             'MIME-Version: 1.0',
             'Content-type: text/plain; charset=UTF-8',
-            'From: Nichecult <no-reply@nichecult.de>',
+            'From: Nice Cult <no-reply@nichecult.de>',
         ];
 
         @mail((string) $user['email'], $subject, $message, implode("\r\n", $headers));

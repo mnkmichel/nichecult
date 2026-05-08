@@ -41,7 +41,7 @@ const submit = async () => {
 <template>
   <main class="min-h-screen bg-stone-950 px-4 py-12 text-stone-100">
     <div class="mx-auto max-w-md rounded-3xl border border-stone-800 bg-stone-900/80 p-6 shadow-2xl">
-      <p class="text-xs uppercase tracking-[0.3em] text-amber-400">Nichecult Admin</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-amber-400">Nice Cult Admin</p>
       <h1 class="mt-2 text-3xl font-bold">Admin Login</h1>
       <p class="mt-2 text-sm text-stone-400">Nur fuer interne Verwaltung von Samples und Nutzerzuweisungen.</p>
 

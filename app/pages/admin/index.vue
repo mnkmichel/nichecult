@@ -555,7 +555,7 @@ onMounted(loadAdminData)
     <div class="mx-auto max-w-7xl space-y-8">
       <header class="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p class="text-xs uppercase tracking-[0.3em] text-amber-400">Nichecult Admin</p>
+          <p class="text-xs uppercase tracking-[0.3em] text-amber-400">Nice Cult Admin</p>
           <h1 class="mt-2 text-3xl font-bold">Admin Verwaltung</h1>
           <p class="mt-2 text-sm text-stone-400">Parfüm-Liste, Set-Liste und User-Zuweisung an einem Ort.</p>
         </div>

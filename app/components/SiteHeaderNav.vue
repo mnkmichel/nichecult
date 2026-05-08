@@ -7,6 +7,12 @@ const props = defineProps<{
 const everDone = ref(false)
 const showSamples = computed(() => props.active === 'samples' || everDone.value)
 
+const syncKurationState = () => {
+  // Keep visibility even for users that only have one of the legacy/new flags.
+  everDone.value = localStorage.getItem('nichecult_kuration_ever_done') === '1'
+    || localStorage.getItem('nichecult_duftkuration_done') === '1'
+}
+
 const logout = async () => {
   localStorage.removeItem('nichecult_token')
   localStorage.removeItem('nichecult_duftkuration_done')
@@ -14,7 +20,14 @@ const logout = async () => {
 }
 
 onMounted(() => {
-  everDone.value = localStorage.getItem('nichecult_kuration_ever_done') === '1'
+  syncKurationState()
+  window.addEventListener('storage', syncKurationState)
+  window.addEventListener('nichecult:kuration-completed', syncKurationState)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('storage', syncKurationState)
+  window.removeEventListener('nichecult:kuration-completed', syncKurationState)
 })
 </script>
 
@@ -22,7 +35,7 @@ onMounted(() => {
   <header class="mb-7 space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-xs uppercase tracking-[0.28em] text-amber-800">Nichecult</p>
+        <p class="text-xs uppercase tracking-[0.28em] text-amber-800">Nice Cult</p>
         <h1 class="mt-2 text-3xl font-bold md:text-4xl">{{ title }}</h1>
       </div>
 
@@ -39,7 +52,7 @@ onMounted(() => {
       <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum</span>
 
       <NuxtLink v-if="active !== 'duftkuration'" to="/duftkuration" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum-Kuration</NuxtLink>
-      <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Duft-Kuration</span>
+      <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum-Kuration</span>
 
       <template v-if="showSamples">
         <NuxtLink v-if="active !== 'samples'" to="/sets" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Ihre Samples</NuxtLink>

@@ -1,8 +1,8 @@
 INSERT INTO samples (code, perfume_name, brand_name, status)
 VALUES
-  ('NC-001', 'Amber Night', 'Nichecult', 'active'),
-  ('NC-002', 'Velvet Citrus', 'Nichecult', 'active'),
-  ('NC-003', 'Wood Noir', 'Nichecult', 'active')
+  ('NC-001', 'Amber Night', 'Nice Cult', 'active'),
+  ('NC-002', 'Velvet Citrus', 'Nice Cult', 'active'),
+  ('NC-003', 'Wood Noir', 'Nice Cult', 'active')
 ON DUPLICATE KEY UPDATE
   perfume_name = VALUES(perfume_name),
   brand_name = VALUES(brand_name),

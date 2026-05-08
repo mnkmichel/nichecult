@@ -28,6 +28,7 @@ const submit = async () => {
 
     if (meRes.kurationDone) {
       localStorage.setItem('nichecult_kuration_ever_done', '1')
+      window.dispatchEvent(new Event('nichecult:kuration-completed'))
     }
 
     await navigateTo('/')

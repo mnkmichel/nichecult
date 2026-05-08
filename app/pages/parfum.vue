@@ -168,7 +168,7 @@ onMounted(loadData)
         <article v-for="item in sortedPerfumes" :key="`${perfumeIdOf(item)}-${item.name}`" class="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm">
           <img v-if="item.image_url" :src="item.image_url" alt="Parfumbild" class="h-56 w-full object-cover" />
           <div class="p-5">
-            <p class="text-xs uppercase tracking-[0.2em] text-stone-500">{{ item.brand_name || 'Nichecult Selection' }}</p>
+            <p class="text-xs uppercase tracking-[0.2em] text-stone-500">{{ item.brand_name || 'Nice Cult Selection' }}</p>
             <h3 class="mt-2 text-xl font-semibold">{{ item.name }}</h3>
             <p v-if="item.description" class="mt-2 text-sm text-stone-600">{{ item.description }}</p>
 

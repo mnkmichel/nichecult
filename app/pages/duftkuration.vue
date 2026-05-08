@@ -101,6 +101,7 @@ const goNext = () => {
   }
   localStorage.setItem('nichecult_duftkuration_done', '1')
   localStorage.setItem('nichecult_kuration_ever_done', '1')
+  window.dispatchEvent(new Event('nichecult:kuration-completed'))
   finished.value = true
   alreadyCompleted.value = false
 }
@@ -132,7 +133,7 @@ onMounted(() => {
   <!-- Step screens -->
   <div v-if="!finished" class="nc-page flex flex-col bg-[#f5f0e8] text-[#1a1612]">
     <div class="nc-page-frame flex flex-1 flex-col">
-      <SiteHeaderNav title="Duft-Kuration" active="duftkuration" />
+      <SiteHeaderNav title="Parfum-Kuration" active="duftkuration" />
 
       <div class="mx-auto flex w-full max-w-3xl flex-1 flex-col">
 
@@ -268,12 +269,12 @@ onMounted(() => {
     </div>
     <!-- Content -->
     <div class="nc-page-frame relative z-10 flex w-full flex-col">
-      <SiteHeaderNav title="Duft-Kuration" active="duftkuration" />
+      <SiteHeaderNav title="Parfum-Kuration" active="duftkuration" />
 
       <div class="flex flex-1 flex-col">
         <h1 class="max-w-2xl text-3xl leading-tight md:text-5xl">
           <template v-if="alreadyCompleted">
-            Ihre Duft-Kuration ist bereits abgeschlossen.<br>
+            Ihre Parfum-Kuration ist bereits abgeschlossen.<br>
             Ihre Samples stehen für Sie bereit.
           </template>
           <template v-else>
@@ -287,7 +288,7 @@ onMounted(() => {
             class="rounded-xl border border-[#c8b48a] bg-white px-8 py-4 text-base font-semibold text-[#5a4820] transition hover:bg-[#ede5d4]"
             @click="resetKuration"
           >
-            Duft-Kuration neu starten
+            Parfum-Kuration neu starten
           </button>
           <NuxtLink
             to="/sets"
