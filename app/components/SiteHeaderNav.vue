@@ -4,9 +4,8 @@ const props = defineProps<{
   active: 'home' | 'parfum' | 'duftkuration' | 'samples'
 }>()
 
-const duftkurationDone = ref(false)
-
-const showSamples = computed(() => props.active === 'samples' || duftkurationDone.value)
+const everDone = ref(false)
+const showSamples = computed(() => props.active === 'samples' || everDone.value)
 
 const logout = async () => {
   localStorage.removeItem('nichecult_token')
@@ -15,7 +14,7 @@ const logout = async () => {
 }
 
 onMounted(() => {
-  duftkurationDone.value = localStorage.getItem('nichecult_duftkuration_done') === '1'
+  everDone.value = localStorage.getItem('nichecult_kuration_ever_done') === '1'
 })
 </script>
 
@@ -39,7 +38,7 @@ onMounted(() => {
       <NuxtLink v-if="active !== 'parfum'" to="/parfum" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum</NuxtLink>
       <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum</span>
 
-      <NuxtLink v-if="active !== 'duftkuration'" to="/duftkuration" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Duft-Kuration</NuxtLink>
+      <NuxtLink v-if="active !== 'duftkuration'" to="/duftkuration" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum-Kuration</NuxtLink>
       <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Duft-Kuration</span>
 
       <template v-if="showSamples">

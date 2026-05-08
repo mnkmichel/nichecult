@@ -536,6 +536,12 @@ const assignSampleSetToUser = async (setId: number) => {
   }
 }
 
+const activeTab = ref<'perfumes' | 'sets' | 'users'>('perfumes')
+
+watch(success, (val) => {
+  if (val) setTimeout(() => { success.value = '' }, 4000)
+})
+
 const logout = async () => {
   localStorage.removeItem('nichecult_token')
   await navigateTo('/admin/login')

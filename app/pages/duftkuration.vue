@@ -53,7 +53,23 @@ const answers = reactive<Record<string, string | number>>({})
 const finished = ref(false)
 const alreadyCompleted = ref(false)
 
-const step = computed(() => steps[currentStep.value])
+const resolveStep = (idx: number): Step => {
+  const safeIndex = Math.max(0, Math.min(idx, steps.length - 1))
+  const resolved = steps[safeIndex]
+  return resolved || steps[0]!
+}
+
+const step = computed<Step>(() => resolveStep(currentStep.value))
+
+const isChoicePair = computed(() => step.value.type === 'choice' && step.value.layout === 'pair')
+const isChoiceStack = computed(() => step.value.type === 'choice' && step.value.layout === 'stack')
+const isChoiceGrid5 = computed(() => step.value.type === 'choice' && step.value.layout === 'grid5')
+const isSliderStep = computed(() => step.value.type === 'slider')
+
+const grid5LastOption = computed(() => {
+  if (step.value.type !== 'choice') return ''
+  return step.value.options[4] || ''
+})
 
 const canContinue = computed(() => {
   const s = step.value
@@ -63,7 +79,7 @@ const canContinue = computed(() => {
 
 // Initialize slider defaults to center (index 2 = middle of 5)
 watch(currentStep, (idx) => {
-  const s = steps[idx]
+  const s = resolveStep(idx)
   if (s.type === 'slider' && answers[s.key] === undefined) {
     answers[s.key] = 2
   }
@@ -84,12 +100,23 @@ const goNext = () => {
     return
   }
   localStorage.setItem('nichecult_duftkuration_done', '1')
+  localStorage.setItem('nichecult_kuration_ever_done', '1')
   finished.value = true
   alreadyCompleted.value = false
 }
 
 const goBack = () => {
   if (currentStep.value > 0) currentStep.value -= 1
+}
+
+const resetKuration = () => {
+  localStorage.removeItem('nichecult_duftkuration_done')
+  for (const key of Object.keys(answers)) {
+    delete answers[key]
+  }
+  currentStep.value = 0
+  finished.value = false
+  alreadyCompleted.value = false
 }
 
 onMounted(() => {
@@ -118,7 +145,7 @@ onMounted(() => {
         <div class="mt-12 flex flex-1 flex-col justify-center md:mt-16">
 
         <!-- Choice: pair (Mann/Frau) -->
-        <div v-if="step.type === 'choice' && step.layout === 'pair'" class="flex justify-between gap-6">
+        <div v-if="isChoicePair" class="flex justify-between gap-6">
           <button
             v-for="opt in (step as ChoiceStep).options"
             :key="opt"
@@ -134,7 +161,7 @@ onMounted(() => {
         </div>
 
         <!-- Choice: stack (Jahreszeit) -->
-        <div v-else-if="step.type === 'choice' && step.layout === 'stack'" class="mx-auto flex w-full max-w-sm flex-col gap-4">
+        <div v-else-if="isChoiceStack" class="mx-auto flex w-full max-w-sm flex-col gap-4">
           <button
             v-for="opt in (step as ChoiceStep).options"
             :key="opt"
@@ -150,7 +177,7 @@ onMounted(() => {
         </div>
 
         <!-- Choice: grid5 (Anlass) -->
-        <div v-else-if="step.type === 'choice' && step.layout === 'grid5'" class="flex flex-col gap-4">
+        <div v-else-if="isChoiceGrid5" class="flex flex-col gap-4">
           <div class="grid grid-cols-2 gap-4">
             <button
               v-for="opt in (step as ChoiceStep).options.slice(0, 4)"
@@ -169,18 +196,18 @@ onMounted(() => {
             <button
               type="button"
               class="rounded-2xl px-10 py-6 text-center text-base font-medium transition md:text-lg"
-              :class="answers[step.key] === (step as ChoiceStep).options[4]
+              :class="answers[step.key] === grid5LastOption
                 ? 'bg-[#8e6c2a] text-[#f5f0e8]'
                 : 'bg-[#b99a57] text-[#1a1612] hover:brightness-95'"
-              @click="selectOption((step as ChoiceStep).options[4])"
+              @click="selectOption(grid5LastOption)"
             >
-              {{ (step as ChoiceStep).options[4] }}
+              {{ grid5LastOption }}
             </button>
           </div>
         </div>
 
         <!-- Slider -->
-        <div v-else-if="step.type === 'slider'" class="mt-8">
+        <div v-else-if="isSliderStep" class="mt-8">
           <!-- Labels row -->
           <div class="relative flex justify-between text-base font-medium md:text-lg">
             <span>{{ (step as SliderStep).leftLabel }}</span>
@@ -254,7 +281,14 @@ onMounted(() => {
             Wir kuratieren nun Ihre erste Persönliche Duftselektion.
           </template>
         </h1>
-        <div class="flex flex-1 items-end justify-end pt-20">
+        <div class="flex flex-1 items-end justify-end gap-3 pt-20">
+          <button
+            type="button"
+            class="rounded-xl border border-[#c8b48a] bg-white px-8 py-4 text-base font-semibold text-[#5a4820] transition hover:bg-[#ede5d4]"
+            @click="resetKuration"
+          >
+            Duft-Kuration neu starten
+          </button>
           <NuxtLink
             to="/sets"
             class="rounded-xl bg-[#8e6c2a] px-8 py-4 text-base font-semibold text-white transition hover:brightness-110"

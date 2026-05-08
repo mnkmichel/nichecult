@@ -20,6 +20,7 @@ const showOverview = ref(true)
 const userSampleSetId = computed(() => Number(route.params.userSampleSetId || 0))
 const currentPerfume = computed(() => perfumes.value[currentPerfumeIdx.value])
 const hasPerfumes = computed(() => perfumes.value.length > 0)
+const tieFavoriteStorageKey = computed(() => `nichecult_tie_favorite_set_${userSampleSetId.value}`)
 
 const priceLabel = (priceCents: unknown, sizeMl: unknown) => {
   const cents = Number(priceCents || 0)
@@ -34,6 +35,18 @@ const priceLabel = (priceCents: unknown, sizeMl: unknown) => {
 const discountedCents = (priceCents: unknown) => Math.round(Number(priceCents || 0) * 0.85)
 
 const isRated = (perfume: Record<string, any>) => perfume?.overall_score != null
+
+const perfumeAvgScore = (perfume: Record<string, any>) => {
+  if (perfume?.overall_score == null) {
+    return null
+  }
+
+  return (
+    Number(perfume.overall_score || 0)
+    + Number(perfume.longevity_score || 0)
+    + Number(perfume.sillage_score || 0)
+  ) / 3
+}
 
 const getFavoritePerfumeId = (items: Array<Record<string, any>>) => {
   let bestPerfumeId: number | null = null
@@ -60,6 +73,30 @@ const getFavoritePerfumeId = (items: Array<Record<string, any>>) => {
 }
 
 const isFavorite = (perfume: Record<string, any>) => Number(perfume?.perfume_id) === favoritePerfumeId.value
+
+const topTiePerfumes = computed(() => {
+  const rated = perfumes.value
+    .map((perfume) => ({ perfume, score: perfumeAvgScore(perfume) }))
+    .filter((entry): entry is { perfume: Record<string, any>; score: number } => entry.score != null)
+
+  if (rated.length < 2) {
+    return []
+  }
+
+  const bestScore = Math.max(...rated.map(entry => entry.score))
+  const epsilon = 0.0001
+
+  return rated
+    .filter(entry => Math.abs(entry.score - bestScore) < epsilon)
+    .map(entry => entry.perfume)
+})
+
+const showTieQuestion = computed(() => topTiePerfumes.value.length >= 2)
+
+const selectTieFavorite = (perfumeId: number) => {
+  favoritePerfumeId.value = perfumeId
+  localStorage.setItem(tieFavoriteStorageKey.value, String(perfumeId))
+}
 
 const statusHeading = (perfume: Record<string, any>) => {
   if (isFavorite(perfume)) {
@@ -169,6 +206,12 @@ const loadData = async () => {
     sampleSet.value = res.sampleSet || null
     perfumes.value = res.perfumes || []
     favoritePerfumeId.value = res.favoritePerfumeId ?? getFavoritePerfumeId(perfumes.value)
+
+    const savedTieFavoriteId = Number(localStorage.getItem(tieFavoriteStorageKey.value) || 0)
+    if (savedTieFavoriteId > 0 && perfumes.value.some(p => Number(p.perfume_id) === savedTieFavoriteId)) {
+      favoritePerfumeId.value = savedTieFavoriteId
+    }
+
     for (const p of perfumes.value) ensureAnswers(p.perfume_id)
   } catch (e: any) {
     error.value = e?.message || 'Fehler beim Laden'
@@ -235,6 +278,26 @@ onMounted(loadData)
         <div class="mx-auto w-full max-w-6xl">
           <div class="mb-6">
             <h1 class="text-3xl font-semibold md:text-4xl">{{ sampleSet?.title || 'Ihre Samples' }}</h1>
+          </div>
+
+          <div v-if="showTieQuestion" class="mb-6 rounded-2xl border border-[#c8b48a] bg-[#faf7f2] p-5">
+            <p class="text-base font-semibold text-[#3e352d] md:text-lg">
+              Sie haben diesen Düften die gleiche Bewertung gegeben. Welcher dieser Düfte trifft Ihren Geschmack am besten?
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button
+                v-for="p in topTiePerfumes"
+                :key="`tie-${p.perfume_id}`"
+                type="button"
+                class="rounded-full border px-4 py-2 text-sm font-medium transition"
+                :class="isFavorite(p)
+                  ? 'border-[#8e6c2a] bg-[#8e6c2a] text-white'
+                  : 'border-[#c8b48a] bg-white text-[#1a1612] hover:bg-[#f0e8d6]'"
+                @click="selectTieFavorite(Number(p.perfume_id))"
+              >
+                {{ p.brand_name }} {{ p.name }}
+              </button>
+            </div>
           </div>
 
           <div class="grid gap-8 md:grid-cols-2 xl:grid-cols-3">

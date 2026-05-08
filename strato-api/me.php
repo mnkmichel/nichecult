@@ -36,9 +36,14 @@ try {
         jsonResponse(['ok' => false, 'error' => 'User not found'], 404);
     }
 
+    $kurationCheck = $pdo->prepare('SELECT COUNT(*) FROM questionnaire_answers WHERE user_id = :user_id LIMIT 1');
+    $kurationCheck->execute(['user_id' => (int) $claims['sub']]);
+    $kurationDone = (int) $kurationCheck->fetchColumn() > 0;
+
     jsonResponse([
         'ok' => true,
         'user' => $user,
+        'kurationDone' => $kurationDone,
     ]);
 } catch (Throwable $e) {
     jsonResponse([

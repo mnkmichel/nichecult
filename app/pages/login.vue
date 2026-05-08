@@ -26,6 +26,10 @@ const submit = async () => {
     const meRes = await me(res.token)
     profile.value = meRes.user || null
 
+    if (meRes.kurationDone) {
+      localStorage.setItem('nichecult_kuration_ever_done', '1')
+    }
+
     await navigateTo('/')
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler beim Login'
@@ -44,6 +48,10 @@ const submit = async () => {
       <form class="mt-6 space-y-4" @submit.prevent="submit">
         <input v-model="form.email" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="email" placeholder="E-Mail" required />
         <input v-model="form.password" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="password" placeholder="Passwort" required />
+
+        <div class="text-right">
+          <NuxtLink to="/forgot-password" class="text-sm text-stone-700 underline hover:text-stone-900">Passwort vergessen?</NuxtLink>
+        </div>
 
         <button :disabled="loading" class="w-full rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white disabled:opacity-60">
           {{ loading ? 'Anmelden...' : 'Einloggen' }}

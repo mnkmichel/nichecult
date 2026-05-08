@@ -10,6 +10,16 @@ type RegisterPayload = {
   lastName?: string
 }
 
+type ForgotPasswordPayload = {
+  email: string
+  appUrl?: string
+}
+
+type ResetPasswordPayload = {
+  token: string
+  password: string
+}
+
 type SampleItem = {
   user_sample_id: number
   sample_status: 'assigned' | 'delivered' | 'rated'
@@ -123,8 +133,22 @@ export const useAuthApi = () => {
     })
   }
 
+  const requestPasswordReset = async (payload: ForgotPasswordPayload) => {
+    return await $fetch<{ ok: boolean; message?: string; error?: string }>(`${apiBase.value}/forgot-password.php`, {
+      method: 'POST',
+      body: payload,
+    })
+  }
+
+  const resetPassword = async (payload: ResetPasswordPayload) => {
+    return await $fetch<{ ok: boolean; error?: string }>(`${apiBase.value}/reset-password.php`, {
+      method: 'POST',
+      body: payload,
+    })
+  }
+
   const me = async (token: string) => {
-    return await $fetch<{ ok: boolean; user?: Record<string, unknown>; error?: string }>(`${apiBase.value}/me.php`, {
+    return await $fetch<{ ok: boolean; user?: Record<string, unknown>; kurationDone?: boolean; error?: string }>(`${apiBase.value}/me.php`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -209,6 +233,8 @@ export const useAuthApi = () => {
   return {
     login,
     register,
+    requestPasswordReset,
+    resetPassword,
     me,
     listSamples,
     saveSampleRating,
