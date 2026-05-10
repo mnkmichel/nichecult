@@ -3,7 +3,7 @@ definePageMeta({
   middleware: 'admin',
 })
 
-const { listAdminUsers, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics } = useAuthApi()
+const { listAdminUsers, deleteAdminUser, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics } = useAuthApi()
 const config = useRuntimeConfig()
 const apiBase = (config.public.apiBase as string).replace(/\/$/, '')
 
@@ -41,6 +41,28 @@ type AdminRatingAnalyticsRow = {
   updated_at: string | null
   set_status: string | null
   answers: Record<string, string>
+}
+
+const deletingUserId = ref<number | null>(null)
+const deleteUserError = ref('')
+
+async function handleDeleteUser(userId: number, userEmail: string) {
+  if (!confirm(`Nutzer "${userEmail}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) return
+  const token = localStorage.getItem('auth_token') || ''
+  deletingUserId.value = userId
+  deleteUserError.value = ''
+  try {
+    const res = await deleteAdminUser(token, userId)
+    if (!res.ok) {
+      deleteUserError.value = res.error || 'Löschen fehlgeschlagen'
+    } else {
+      users.value = users.value.filter(u => u.id !== userId)
+    }
+  } catch {
+    deleteUserError.value = 'Netzwerkfehler beim Löschen'
+  } finally {
+    deletingUserId.value = null
+  }
 }
 
 const analyticsRows = ref<AdminRatingAnalyticsRow[]>([])
@@ -1384,6 +1406,10 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <div v-if="deleteUserError" class="mt-4 rounded-xl border border-red-800 bg-red-950/60 px-4 py-3 text-sm text-red-300">
+            {{ deleteUserError }}
+          </div>
+
           <div v-if="!filteredUsers.length" class="mt-5 rounded-2xl border border-stone-800 bg-stone-950/60 p-5 text-sm text-stone-300">
             Kein Nutzer zur Suche gefunden.
           </div>
@@ -1396,6 +1422,7 @@ onUnmounted(() => {
                   <th class="px-4 py-3 font-semibold">E-Mail</th>
                   <th class="px-4 py-3 font-semibold">Name</th>
                   <th class="px-4 py-3 font-semibold">Rolle</th>
+                  <th class="px-4 py-3 font-semibold"></th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-stone-800 bg-stone-950/50 text-stone-200">
@@ -1407,6 +1434,15 @@ onUnmounted(() => {
                     <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="user.is_admin ? 'bg-amber-400/20 text-amber-200' : 'bg-stone-800 text-stone-300'">
                       {{ user.is_admin ? 'Admin' : 'User' }}
                     </span>
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <button
+                      :disabled="deletingUserId === user.id"
+                      class="rounded-lg border border-red-800 bg-red-950/60 px-3 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-900/80 disabled:opacity-50"
+                      @click="handleDeleteUser(user.id, user.email)"
+                    >
+                      {{ deletingUserId === user.id ? '…' : 'Löschen' }}
+                    </button>
                   </td>
                 </tr>
               </tbody>

@@ -221,6 +221,18 @@ export const useAuthApi = () => {
     })
   }
 
+  const deleteAdminUser = async (token: string, userId: number) => {
+    const body = new FormData()
+    body.append('id', String(userId))
+    return await $fetch<{ ok: boolean; error?: string }>(`${apiBase.value}/admin-delete-user.php`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body,
+    })
+  }
+
   const listAdminRatingAnalytics = async (token: string) => {
     return await $fetch<{ ok: boolean; rows?: AdminRatingAnalyticsRow[]; error?: string }>(`${apiBase.value}/admin-rating-analytics.php`, {
       headers: {
@@ -271,6 +283,7 @@ export const useAuthApi = () => {
     listSamples,
     saveSampleRating,
     listAdminUsers,
+    deleteAdminUser,
     listAdminPerfumes,
     listAdminSampleSets,
     listAdminRatingAnalytics,
