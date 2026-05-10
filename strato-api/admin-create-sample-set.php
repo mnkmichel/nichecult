@@ -30,8 +30,24 @@ $title = trim((string) ($_POST['title'] ?? ''));
 $description = trim((string) ($_POST['description'] ?? ''));
 $status = trim((string) ($_POST['status'] ?? 'active'));
 $assignUserId = (int) ($_POST['assign_user_id'] ?? 0);
+$ratingDeadlineRaw = trim((string) ($_POST['rating_deadline_at'] ?? ''));
+$ratingDeadlineAt = null;
 $perfumeIdsRaw = trim((string) ($_POST['perfume_ids'] ?? '[]'));
 $perfumeIds = json_decode($perfumeIdsRaw, true);
+
+if ($ratingDeadlineRaw !== '') {
+    $normalized = str_replace('T', ' ', $ratingDeadlineRaw);
+    if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $normalized)) {
+        $normalized .= ':00';
+    }
+
+    $dt = DateTime::createFromFormat('Y-m-d H:i:s', $normalized);
+    if (!$dt || $dt->format('Y-m-d H:i:s') !== $normalized) {
+        jsonResponse(['ok' => false, 'error' => 'Invalid rating_deadline_at format'], 400);
+    }
+
+    $ratingDeadlineAt = $normalized;
+}
 
 if ($title === '') {
     jsonResponse(['ok' => false, 'error' => 'Set title is required'], 400);
@@ -55,6 +71,29 @@ try {
     $pdo = getPdo($config);
     $pdo->beginTransaction();
 
+    $hasColumn = static function (PDO $pdo, string $table, string $column): bool {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name
+               AND COLUMN_NAME = :column_name'
+        );
+        $stmt->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    };
+
+    if (!$hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at')) {
+        $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
+    }
+
+    if (!$hasColumn($pdo, 'sample_sets', 'rating_deadline_at')) {
+        $pdo->exec('ALTER TABLE sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER image_path');
+    }
+
     $check = $pdo->prepare('SELECT id FROM perfumes WHERE id IN (' . implode(',', array_fill(0, count($perfumeIds), '?')) . ')');
     $check->execute($perfumeIds);
     $foundIds = array_map('intval', array_column($check->fetchAll(), 'id'));
@@ -67,11 +106,12 @@ try {
         jsonResponse(['ok' => false, 'error' => 'One or more perfume ids are invalid'], 400);
     }
 
-    $insertSet = $pdo->prepare('INSERT INTO sample_sets (title, description, image_path, status) VALUES (:title, :description, :image_path, :status)');
+    $insertSet = $pdo->prepare('INSERT INTO sample_sets (title, description, image_path, rating_deadline_at, status) VALUES (:title, :description, :image_path, :rating_deadline_at, :status)');
     $insertSet->execute([
         'title' => $title,
         'description' => $description !== '' ? $description : null,
         'image_path' => $imagePath,
+        'rating_deadline_at' => $ratingDeadlineAt,
         'status' => $status,
     ]);
 
@@ -87,10 +127,11 @@ try {
     }
 
     if ($assignUserId > 0) {
-        $assign = $pdo->prepare("INSERT INTO user_sample_sets (user_id, sample_set_id, set_status) VALUES (:user_id, :sample_set_id, 'delivered') ON DUPLICATE KEY UPDATE set_status = 'delivered', completed_at = NULL");
+        $assign = $pdo->prepare("INSERT INTO user_sample_sets (user_id, sample_set_id, set_status, rating_deadline_at) VALUES (:user_id, :sample_set_id, 'delivered', :rating_deadline_at) ON DUPLICATE KEY UPDATE set_status = 'delivered', rating_deadline_at = VALUES(rating_deadline_at), completed_at = NULL");
         $assign->execute([
             'user_id' => $assignUserId,
             'sample_set_id' => $sampleSetId,
+            'rating_deadline_at' => $ratingDeadlineAt,
         ]);
     }
 
@@ -102,6 +143,7 @@ try {
             'id' => $sampleSetId,
             'title' => $title,
             'description' => $description,
+            'rating_deadline_at' => $ratingDeadlineAt,
             'image_url' => publicAssetUrl($imagePath),
             'perfume_ids' => $perfumeIds,
         ],

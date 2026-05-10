@@ -65,11 +65,22 @@ try {
         ? 'p.price_cents'
         : '0 AS price_cents';
 
+    $hasUserDeadline = $hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at');
+    $hasSetDeadline = $hasColumn($pdo, 'sample_sets', 'rating_deadline_at');
+    $ratingDeadlineSelect = ($hasUserDeadline && $hasSetDeadline)
+        ? 'COALESCE(uss.rating_deadline_at, ss.rating_deadline_at) AS rating_deadline_at'
+        : ($hasUserDeadline
+            ? 'uss.rating_deadline_at'
+            : ($hasSetDeadline
+                ? 'ss.rating_deadline_at AS rating_deadline_at'
+                : 'NULL AS rating_deadline_at'));
+
     $setStmt = $pdo->prepare(
         "SELECT
             uss.id AS user_sample_set_id,
             uss.set_status,
             uss.assigned_at,
+            {$ratingDeadlineSelect},
             uss.completed_at,
             ss.id AS sample_set_id,
             ss.title,

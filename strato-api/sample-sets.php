@@ -28,17 +28,44 @@ if (!$claims || !isset($claims['sub'])) {
 
 try {
     $pdo = getPdo($config);
+
+    $hasColumn = static function (PDO $pdo, string $table, string $column): bool {
+        $stmt = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name
+               AND COLUMN_NAME = :column_name'
+        );
+        $stmt->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
+        return (int) $stmt->fetchColumn() > 0;
+    };
+
+    $hasUserDeadline = $hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at');
+    $hasSetDeadline = $hasColumn($pdo, 'sample_sets', 'rating_deadline_at');
+    $ratingDeadlineSelect = ($hasUserDeadline && $hasSetDeadline)
+        ? 'COALESCE(uss.rating_deadline_at, ss.rating_deadline_at) AS rating_deadline_at'
+        : ($hasUserDeadline
+            ? 'uss.rating_deadline_at'
+            : ($hasSetDeadline
+                ? 'ss.rating_deadline_at AS rating_deadline_at'
+                : 'NULL AS rating_deadline_at'));
+
     $stmt = $pdo->prepare(
         'SELECT
             uss.id AS user_sample_set_id,
             uss.set_status,
             uss.assigned_at,
+            ' . $ratingDeadlineSelect . ',
             uss.completed_at,
             ss.id AS sample_set_id,
             ss.title,
             ss.description,
             ss.image_path,
-            COUNT(ssi.id) AS perfume_count
+                COUNT(DISTINCT ssi.id) AS perfume_count
          FROM user_sample_sets uss
          INNER JOIN sample_sets ss ON ss.id = uss.sample_set_id
          LEFT JOIN sample_set_items ssi ON ssi.sample_set_id = ss.id

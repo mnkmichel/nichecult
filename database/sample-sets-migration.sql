@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS sample_sets (
   title VARCHAR(190) NOT NULL,
   description TEXT NULL,
   image_path VARCHAR(255) NULL,
+  rating_deadline_at DATETIME NULL,
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -48,10 +49,12 @@ CREATE TABLE IF NOT EXISTS user_sample_sets (
   sample_set_id BIGINT NOT NULL,
   set_status ENUM('assigned', 'delivered', 'completed') NOT NULL DEFAULT 'assigned',
   assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  rating_deadline_at DATETIME NULL,
   completed_at TIMESTAMP NULL,
   CONSTRAINT fk_user_sample_sets_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_user_sample_sets_set FOREIGN KEY (sample_set_id) REFERENCES sample_sets(id) ON DELETE CASCADE,
-  UNIQUE KEY uq_user_sample_set (user_id, sample_set_id)
+  UNIQUE KEY uq_user_sample_set (user_id, sample_set_id),
+  INDEX idx_user_sample_sets_deadline (rating_deadline_at)
 );
 
 CREATE TABLE IF NOT EXISTS sample_set_perfume_ratings (

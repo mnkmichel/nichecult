@@ -35,7 +35,7 @@ onBeforeUnmount(() => {
   <header class="mb-7 space-y-5">
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <p class="text-xs uppercase tracking-[0.28em] text-amber-800">Nice Cult</p>
+        <p class="text-xs uppercase tracking-[0.28em] text-amber-800" style="font-family: Georgia, serif;">Niche Cult</p>
         <h1 class="mt-2 text-3xl font-bold md:text-4xl">{{ title }}</h1>
       </div>
 

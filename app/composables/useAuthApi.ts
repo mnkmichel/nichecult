@@ -65,13 +65,37 @@ type AdminSampleSet = {
   status: 'active' | 'inactive'
   perfume_count: number
   assigned_count: number
+  next_rating_deadline_at?: string | null
+  overdue_assignments?: number
   perfume_ids: number[]
+}
+
+type AdminRatingAnalyticsRow = {
+  rating_id: number
+  user_id: number
+  user_email: string
+  user_name: string
+  user_sample_set_id: number
+  sample_set_id: number
+  sample_set_title: string
+  perfume_id: number
+  perfume_name: string
+  brand_name: string | null
+  sort_order: number | null
+  overall_score: number | null
+  longevity_score: number | null
+  sillage_score: number | null
+  created_at: string | null
+  updated_at: string | null
+  set_status: string | null
+  answers: Record<string, string>
 }
 
 type SampleSetItem = {
   user_sample_set_id: number
   set_status: 'assigned' | 'delivered' | 'completed'
   assigned_at: string
+  rating_deadline_at?: string | null
   completed_at: string | null
   sample_set_id: number
   title: string
@@ -197,6 +221,14 @@ export const useAuthApi = () => {
     })
   }
 
+  const listAdminRatingAnalytics = async (token: string) => {
+    return await $fetch<{ ok: boolean; rows?: AdminRatingAnalyticsRow[]; error?: string }>(`${apiBase.value}/admin-rating-analytics.php`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  }
+
   const listPerfumes = async () => {
     return await $fetch<{ ok: boolean; perfumes?: PerfumeItem[]; error?: string }>(`${apiBase.value}/perfumes.php`)
   }
@@ -241,6 +273,7 @@ export const useAuthApi = () => {
     listAdminUsers,
     listAdminPerfumes,
     listAdminSampleSets,
+    listAdminRatingAnalytics,
     listPerfumes,
     listSampleSets,
     getSampleSetDetail,

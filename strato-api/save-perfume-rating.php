@@ -166,10 +166,20 @@ try {
 
     $hasRatingUpdatedAt = $hasColumn($pdo, 'sample_set_perfume_ratings', 'updated_at');
     $hasRatingAnswersTable = $hasTable($pdo, 'sample_set_perfume_rating_answers');
+    $hasUserDeadlineAt = $hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at');
+    $hasSetDeadlineAt = $hasColumn($pdo, 'sample_sets', 'rating_deadline_at');
+    $ratingDeadlineSelect = ($hasUserDeadlineAt && $hasSetDeadlineAt)
+        ? ', COALESCE(uss.rating_deadline_at, ss.rating_deadline_at) AS rating_deadline_at'
+        : ($hasUserDeadlineAt
+            ? ', uss.rating_deadline_at'
+            : ($hasSetDeadlineAt
+                ? ', ss.rating_deadline_at AS rating_deadline_at'
+                : ', NULL AS rating_deadline_at'));
 
     $ownership = $pdo->prepare(
-        'SELECT uss.sample_set_id
+        'SELECT uss.sample_set_id' . $ratingDeadlineSelect . '
          FROM user_sample_sets uss
+         INNER JOIN sample_sets ss ON ss.id = uss.sample_set_id
          INNER JOIN sample_set_items ssi ON ssi.sample_set_id = uss.sample_set_id
          WHERE uss.id = :user_sample_set_id AND uss.user_id = :user_id AND ssi.perfume_id = :perfume_id
          LIMIT 1'
@@ -184,6 +194,18 @@ try {
     if (!$owned) {
         $pdo->rollBack();
         jsonResponse(['ok' => false, 'error' => 'Perfume not found in assigned sample set'], 404);
+    }
+
+    $deadlineRaw = (string) ($owned['rating_deadline_at'] ?? '');
+    if ($deadlineRaw !== '') {
+        $deadline = DateTime::createFromFormat('Y-m-d H:i:s', $deadlineRaw);
+        if ($deadline && new DateTime('now') > $deadline) {
+            $pdo->rollBack();
+            jsonResponse([
+                'ok' => false,
+                'error' => 'Die Bewertungsfrist fuer dieses Set ist abgelaufen',
+            ], 403);
+        }
     }
 
     $sampleSetId = (int) $owned['sample_set_id'];

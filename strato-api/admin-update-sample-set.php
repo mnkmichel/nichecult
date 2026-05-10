@@ -31,8 +31,24 @@ $title = trim((string) ($_POST['title'] ?? ''));
 $description = trim((string) ($_POST['description'] ?? ''));
 $status = trim((string) ($_POST['status'] ?? 'active'));
 $assignUserId = (int) ($_POST['assign_user_id'] ?? 0);
+$ratingDeadlineRaw = trim((string) ($_POST['rating_deadline_at'] ?? ''));
+$ratingDeadlineAt = null;
 $perfumeIdsRaw = trim((string) ($_POST['perfume_ids'] ?? '[]'));
 $perfumeIds = json_decode($perfumeIdsRaw, true);
+
+if ($ratingDeadlineRaw !== '') {
+    $normalized = str_replace('T', ' ', $ratingDeadlineRaw);
+    if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $normalized)) {
+        $normalized .= ':00';
+    }
+
+    $dt = DateTime::createFromFormat('Y-m-d H:i:s', $normalized);
+    if (!$dt || $dt->format('Y-m-d H:i:s') !== $normalized) {
+        jsonResponse(['ok' => false, 'error' => 'Invalid rating_deadline_at format'], 400);
+    }
+
+    $ratingDeadlineAt = $normalized;
+}
 
 if ($id <= 0) {
     jsonResponse(['ok' => false, 'error' => 'Invalid sample set id'], 400);
@@ -82,6 +98,10 @@ try {
         jsonResponse(['ok' => false, 'error' => 'Sample set not found'], 404);
     }
 
+    if (!$hasColumn($pdo, 'sample_sets', 'rating_deadline_at')) {
+        $pdo->exec('ALTER TABLE sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER image_path');
+    }
+
     $check = $pdo->prepare('SELECT id FROM perfumes WHERE id IN (' . implode(',', array_fill(0, count($perfumeIds), '?')) . ')');
     $check->execute($perfumeIds);
     $foundIds = array_map('intval', array_column($check->fetchAll(), 'id'));
@@ -104,6 +124,7 @@ try {
         'title = :title',
         'description = :description',
         'image_path = :image_path',
+        'rating_deadline_at = :rating_deadline_at',
         'status = :status',
     ];
 
@@ -121,6 +142,7 @@ try {
         'title' => $title,
         'description' => $description !== '' ? $description : null,
         'image_path' => $imagePath,
+        'rating_deadline_at' => $ratingDeadlineAt,
         'status' => $status,
     ]);
 
@@ -137,12 +159,36 @@ try {
     }
 
     if ($assignUserId > 0) {
-        $assign = $pdo->prepare("INSERT INTO user_sample_sets (user_id, sample_set_id, set_status) VALUES (:user_id, :sample_set_id, 'delivered') ON DUPLICATE KEY UPDATE set_status = 'delivered', completed_at = NULL");
+        if (!$hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at')) {
+            $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
+        }
+
+        $assign = $pdo->prepare("INSERT INTO user_sample_sets (user_id, sample_set_id, set_status, rating_deadline_at) VALUES (:user_id, :sample_set_id, 'delivered', :rating_deadline_at) ON DUPLICATE KEY UPDATE set_status = 'delivered', rating_deadline_at = VALUES(rating_deadline_at), completed_at = NULL");
         $assign->execute([
             'user_id' => $assignUserId,
             'sample_set_id' => $id,
+            'rating_deadline_at' => $ratingDeadlineAt,
+        ]);
+    } elseif ($hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at')) {
+        $updateDeadlines = $pdo->prepare('UPDATE user_sample_sets SET rating_deadline_at = :rating_deadline_at WHERE sample_set_id = :sample_set_id AND set_status <> "completed"');
+        $updateDeadlines->execute([
+            'rating_deadline_at' => $ratingDeadlineAt,
+            'sample_set_id' => $id,
         ]);
     }
+
+    $storedDeadlineStmt = $pdo->prepare(
+        'SELECT
+            ss.rating_deadline_at AS sample_set_rating_deadline_at,
+            MIN(CASE WHEN uss.set_status <> "completed" THEN uss.rating_deadline_at ELSE NULL END) AS next_rating_deadline_at
+         FROM sample_sets ss
+         LEFT JOIN user_sample_sets uss ON uss.sample_set_id = ss.id
+         WHERE ss.id = :id
+         GROUP BY ss.id
+         LIMIT 1'
+    );
+    $storedDeadlineStmt->execute(['id' => $id]);
+    $storedDeadlineRow = $storedDeadlineStmt->fetch() ?: [];
 
     $pdo->commit();
 
@@ -153,8 +199,14 @@ try {
             'title' => $title,
             'description' => $description,
             'status' => $status,
+            'rating_deadline_at' => $storedDeadlineRow['sample_set_rating_deadline_at'] ?? null,
+            'next_rating_deadline_at' => $storedDeadlineRow['next_rating_deadline_at'] ?? null,
             'image_url' => publicAssetUrl($imagePath),
             'perfume_ids' => $perfumeIds,
+        ],
+        'debug' => [
+            'submitted_rating_deadline_at' => $ratingDeadlineRaw,
+            'normalized_rating_deadline_at' => $ratingDeadlineAt,
         ],
     ]);
 } catch (Throwable $e) {

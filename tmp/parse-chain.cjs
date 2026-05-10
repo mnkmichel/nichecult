@@ -1,0 +1,6 @@
+const fs=require('fs')
+const {parse}=require('@vue/compiler-sfc')
+let src=fs.readFileSync('app/pages/duftkuration.vue','utf8')
+src=src.replace(/v-else-if=/g,'v-if=')
+const r=parse(src,{filename:'x.vue'})
+console.log(r.errors.length? JSON.stringify(r.errors[0].loc):'ok')
