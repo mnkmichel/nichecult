@@ -989,6 +989,21 @@ const passgenauigkeitChart = computed(() => {
   }))
 })
 
+const userFavoriteMap = computed(() => {
+  const map = new Map<number, string>()
+  const scores = new Map<number, number>()
+  for (const row of analyticsRows.value) {
+    const score = ((row.overall_score ?? 0) + (row.longevity_score ?? 0) + (row.sillage_score ?? 0)) / 3
+    const current = scores.get(row.user_id)
+    if (current === undefined || score > current) {
+      scores.set(row.user_id, score)
+      const label = row.brand_name ? `${row.brand_name} – ${row.perfume_name}` : row.perfume_name
+      map.set(row.user_id, label)
+    }
+  }
+  return map
+})
+
 const duftfamilienChart = computed(() => {
   const counts = new Map<string, number>()
   for (const row of selectedPerfumeRows.value) {
@@ -1422,6 +1437,7 @@ onUnmounted(() => {
                   <th class="px-4 py-3 font-semibold">E-Mail</th>
                   <th class="px-4 py-3 font-semibold">Name</th>
                   <th class="px-4 py-3 font-semibold">Rolle</th>
+                  <th class="px-4 py-3 font-semibold">Favorit-Parfüm</th>
                   <th class="px-4 py-3 font-semibold"></th>
                 </tr>
               </thead>
@@ -1434,6 +1450,16 @@ onUnmounted(() => {
                     <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="user.is_admin ? 'bg-amber-400/20 text-amber-200' : 'bg-stone-800 text-stone-300'">
                       {{ user.is_admin ? 'Admin' : 'User' }}
                     </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span
+                      v-if="userFavoriteMap.get(user.id)"
+                      class="inline-flex items-center gap-1.5 rounded-full border border-amber-700/50 bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-300"
+                    >
+                      <span class="text-amber-400">★</span>
+                      {{ userFavoriteMap.get(user.id) }}
+                    </span>
+                    <span v-else class="text-stone-600">–</span>
                   </td>
                   <td class="px-4 py-3 text-right">
                     <button
