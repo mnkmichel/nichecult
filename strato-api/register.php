@@ -19,6 +19,8 @@ $email = strtolower(trim((string) ($body['email'] ?? '')));
 $password = (string) ($body['password'] ?? '');
 $firstName = trim((string) ($body['firstName'] ?? ''));
 $lastName = trim((string) ($body['lastName'] ?? ''));
+$ageRaw = $body['age'] ?? null;
+$age = filter_var($ageRaw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 12, 'max_range' => 120]]);
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     jsonResponse(['ok' => false, 'error' => 'Invalid email'], 400);
@@ -26,6 +28,10 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 
 if (strlen($password) < 8) {
     jsonResponse(['ok' => false, 'error' => 'Password must be at least 8 chars'], 400);
+}
+
+if ($age === false) {
+    jsonResponse(['ok' => false, 'error' => 'Age must be between 12 and 120'], 400);
 }
 
 try {
@@ -40,12 +46,13 @@ try {
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
 
-    $insert = $pdo->prepare('INSERT INTO users (email, password_hash, first_name, last_name) VALUES (:email, :password_hash, :first_name, :last_name)');
+    $insert = $pdo->prepare('INSERT INTO users (email, password_hash, first_name, last_name, age) VALUES (:email, :password_hash, :first_name, :last_name, :age)');
     $insert->execute([
         'email' => $email,
         'password_hash' => $hash,
         'first_name' => $firstName !== '' ? $firstName : null,
         'last_name' => $lastName !== '' ? $lastName : null,
+        'age' => (int) $age,
     ]);
 
     jsonResponse([

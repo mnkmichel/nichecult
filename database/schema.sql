@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   first_name VARCHAR(120) NULL,
   last_name VARCHAR(120) NULL,
+  age TINYINT UNSIGNED NULL,
   tester_group_id INT NULL,
   is_admin TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

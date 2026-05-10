@@ -4,6 +4,7 @@ const { register } = useAuthApi()
 const form = reactive({
   firstName: '',
   lastName: '',
+  age: null as number | null,
   email: '',
   password: '',
 })
@@ -26,6 +27,7 @@ const submit = async () => {
     }
 
     success.value = 'Registrierung erfolgreich. Du kannst dich jetzt einloggen.'
+    form.age = null
     form.password = ''
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler bei der Registrierung'
@@ -44,6 +46,7 @@ const submit = async () => {
       <form class="mt-6 space-y-4" @submit.prevent="submit">
         <input v-model="form.firstName" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="text" placeholder="Vorname" />
         <input v-model="form.lastName" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="text" placeholder="Nachname" />
+        <input v-model.number="form.age" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="number" min="12" max="120" placeholder="Alter" required />
         <input v-model="form.email" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="email" placeholder="E-Mail" required />
         <input v-model="form.password" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="password" placeholder="Passwort (min. 8 Zeichen)" required />
 

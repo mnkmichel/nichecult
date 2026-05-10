@@ -72,5 +72,5 @@ try {
         'ok' => false,
         'error' => 'Perfume creation failed',
         'details' => $e->getMessage(),
-    ], 500);
+    ], 502);
 }

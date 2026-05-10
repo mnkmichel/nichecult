@@ -8,6 +8,7 @@ type RegisterPayload = {
   password: string
   firstName?: string
   lastName?: string
+  age: number
 }
 
 type ForgotPasswordPayload = {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getQuestions, getQuestionTitle, getQuestionOptions, getQuestionOptionDescriptions, type Question, type QuestionContext } from '~/composables/useQuestions'
+import parfumKurationImage from '~/assets/images/Parfum Kuration hochkant.png'
 
 definePageMeta({
   middleware: 'auth',
@@ -24,7 +25,7 @@ type DisplayQuestion = {
 }
 
 const steps = computed<DisplayQuestion[]>(() => {
-  return questions.map(q => {
+  const mapped = questions.map(q => {
     const title = getQuestionTitle(q, context)
     const options = getQuestionOptions(q, context)
     
@@ -58,9 +59,19 @@ const steps = computed<DisplayQuestion[]>(() => {
     }
     return { type: 'unknown', key: q.key, title }
   })
+
+  return [
+    {
+      type: 'intro',
+      key: '__intro__',
+      title: 'Parfum-Kuration',
+    },
+    ...mapped,
+  ]
 })
 
 const slideConfig = [
+  { keys: ['__intro__'] },
   { keys: ['gender'] },
   { keys: ['season'] },
   { keys: ['occasion'] },
@@ -123,11 +134,13 @@ const isChoiceStack = computed(() => currentQ.value.type === 'choice' && current
 const isChoiceGrid6 = computed(() => currentQ.value.type === 'choice' && currentQ.value.layout === 'grid6')
 const isSliderStep = computed(() => currentQ.value.type === 'slider')
 const isMultiStep = computed(() => currentQ.value.type === 'multi')
+const isIntroStep = computed(() => currentQ.value.type === 'intro')
 
 const canContinue = computed(() => {
   const slide = currentSlideQuestions.value
   if (slide.length === 0) return false
   return slide.every((s) => {
+    if (s.type === 'intro') return true
     if (s.type === 'slider') return answers[s.key] !== undefined
     if (s.type === 'multi') return Array.isArray(answers[s.key]) && (answers[s.key] as string[]).length > 0
     return Boolean(answers[s.key])
@@ -245,12 +258,23 @@ onMounted(() => {
           <div class="space-y-1">
             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b6c2d]">Duftprofil</p>
             <p class="text-sm font-medium leading-snug text-[#1a1612] md:text-base">
-              {{ currentSlideQuestions.length > 1 ? 'Bitte beantworten Sie die folgenden Fragen' : currentQ.title }}
+              {{ isIntroStep ? 'Starten Sie mit Ihrer persönlichen Parfum-Kuration' : (currentSlideQuestions.length > 1 ? 'Bitte beantworten Sie die folgenden Fragen' : currentQ.title) }}
             </p>
           </div>
 
           <div class="mt-8 flex flex-1 flex-col justify-center md:mt-10">
-            <div v-if="isChoicePair" class="flex justify-between gap-6">
+            <div v-if="isIntroStep" class="mx-auto w-full max-w-3xl">
+              <div class="overflow-hidden rounded-3xl border border-[#e4d7bf] bg-[#fcf8ef] shadow-[0_25px_50px_-30px_rgba(68,49,23,0.7)]">
+                <img
+                  :src="parfumKurationImage"
+                  alt="Parfum Kuration"
+                  class="block h-auto w-full"
+                >
+              </div>
+              <div class="h-2" aria-hidden="true"></div>
+            </div>
+
+            <div v-else-if="isChoicePair" class="flex justify-between gap-6">
               <button
                 v-for="opt in (currentQ as any).options"
                 :key="opt"
