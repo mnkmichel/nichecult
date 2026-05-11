@@ -39,7 +39,7 @@ export const unifiedQuestions: Question[] = [
     key: 'gender',
     layout: 'pair',
     curation: {
-      title: 'Für welches Geschlecht suchen Sie ein Parfum?',
+      title: 'Suchen Sie ein Parfum für eine Frau oder einen Mann?',
       options: ['Mann', 'Frau'],
     },
     rating: {
@@ -65,7 +65,7 @@ export const unifiedQuestions: Question[] = [
     key: 'occasion',
     layout: 'grid6',
     curation: {
-      title: 'Für welche Anlässe suchen Sie ein Parfum?',
+      title: 'Zu welchen Anlässen sollte das Parfum am besten passen?',
       options: [
         'Alltag & Freizeit',
         'Geschäftliches Umfeld',
@@ -107,7 +107,7 @@ export const unifiedQuestions: Question[] = [
     type: 'slider',
     key: 'warmFrisch',
     curation: {
-      title: 'Sollte Ihr Parfum eher einen frischen oder warmen Character haben?',
+      title: 'Sollte Ihr Parfum eher einen frischen oder warmen Charakter haben?',
       left: 'Warm',
       center: 'Keine Präferenz',
       right: 'Frisch',
@@ -141,7 +141,7 @@ export const unifiedQuestions: Question[] = [
     curation: {
       title: 'Sollte Ihr Parfum eher intensiv oder dezent sein?',
       left: 'Intensiv',
-      center: 'Neutral',
+      center: 'Keine Präferenz',
       right: 'Dezent',
     },
     rating: {
@@ -159,10 +159,10 @@ export const ratingOnlyQuestions: Question[] = [
     type: 'slider',
     key: 'sweetness',
     curation: {
-      title: 'Sweetness Preference',
-      left: 'Nicht süß',
-      center: 'Neutral',
-      right: 'Süß',
+      title: 'Sollte Ihr Parfum eher süß oder nicht süß sein?',
+      left: 'Gar nicht süß',
+      center: 'Keine Präferenz',
+      right: 'Sehr süß',
     },
     rating: {
       title: 'Süß oder Nicht süß?',
@@ -175,10 +175,10 @@ export const ratingOnlyQuestions: Question[] = [
     type: 'slider',
     key: 'sexyClean',
     curation: {
-      title: 'Character Preference',
-      left: 'Sexy/Sinnlich',
-      center: 'Ausgewogen',
-      right: 'Clean/Sachlich',
+      title: 'Sollte das Parfum eher sexy oder clean wirken?',
+      left: 'Clean',
+      center: 'Keine Präferenz',
+      right: 'Sexy',
     },
     rating: {
       title: 'Sexy oder Clean?',
@@ -191,7 +191,7 @@ export const ratingOnlyQuestions: Question[] = [
     type: 'multi',
     key: 'duftfamilien',
     curation: {
-      title: 'Welche Duftfamilien treffen auf dieses Parfum zu?',
+      title: 'Welche Duftfamilien sagen Ihnen am meisten zu?',
     },
     rating: {
       title: 'Welchen Duftfamilien ordnen Sie diesen Duft zu?',

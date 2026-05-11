@@ -76,8 +76,8 @@ const slideConfig = [
   { keys: ['season'] },
   { keys: ['occasion'] },
   { keys: ['warmFrisch', 'naturalSynthetisch'] },
-  { keys: ['intensivDezent'] },
   { keys: ['sweetness', 'sexyClean'] },
+  { keys: ['intensivDezent'] },
   { keys: ['duftfamilien'] },
 ]
 
@@ -129,9 +129,27 @@ const currentQ = computed<DisplayQuestion>(() => {
   return (first || step.value) as DisplayQuestion
 })
 
+const isStepWithoutIntroPrompt = computed(() => {
+  const keys = currentSlideQuestions.value.map(q => q.key)
+  const isWarmNatural = keys.length === 2 && keys.includes('warmFrisch') && keys.includes('naturalSynthetisch')
+  const isSweetSexy = keys.length === 2 && keys.includes('sweetness') && keys.includes('sexyClean')
+  return isWarmNatural || isSweetSexy
+})
+
+const primaryQuestionText = computed(() => {
+  if (isIntroStep.value) {
+    return 'Starten Sie mit Ihrer persönlichen Parfum-Kuration'
+  }
+  if (currentSlideQuestions.value.length > 1) {
+    return isStepWithoutIntroPrompt.value ? '' : 'Bitte beantworten Sie die folgenden Fragen'
+  }
+  return currentQ.value.title
+})
+
 const isChoicePair = computed(() => currentQ.value.type === 'choice' && currentQ.value.layout === 'pair')
 const isChoiceStack = computed(() => currentQ.value.type === 'choice' && currentQ.value.layout === 'stack')
 const isChoiceGrid6 = computed(() => currentQ.value.type === 'choice' && currentQ.value.layout === 'grid6')
+const isOccasionMultiSelect = computed(() => currentQ.value.key === 'occasion')
 const isSliderStep = computed(() => currentQ.value.type === 'slider')
 const isMultiStep = computed(() => currentQ.value.type === 'multi')
 const isIntroStep = computed(() => currentQ.value.type === 'intro')
@@ -143,12 +161,25 @@ const canContinue = computed(() => {
     if (s.type === 'intro') return true
     if (s.type === 'slider') return answers[s.key] !== undefined
     if (s.type === 'multi') return Array.isArray(answers[s.key]) && (answers[s.key] as string[]).length > 0
+    if (s.type === 'choice' && s.key === 'occasion') return Array.isArray(answers[s.key]) && (answers[s.key] as string[]).length > 0
     return Boolean(answers[s.key])
   })
 })
 
 const selectOption = (value: string) => {
   answers[currentQ.value.key] = value
+}
+
+const toggleChoiceOption = (key: string, value: string) => {
+  const current = answers[key]
+  const arr = Array.isArray(current) ? current : []
+  const idx = arr.indexOf(value)
+  if (idx >= 0) {
+    arr.splice(idx, 1)
+  } else {
+    arr.push(value)
+  }
+  answers[key] = arr
 }
 
 const setSlider = (idx: number) => {
@@ -257,8 +288,8 @@ onMounted(() => {
 
           <div class="space-y-1">
             <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#8b6c2d]">Duftprofil</p>
-            <p class="text-sm font-medium leading-snug text-[#1a1612] md:text-base">
-              {{ isIntroStep ? 'Starten Sie mit Ihrer persönlichen Parfum-Kuration' : (currentSlideQuestions.length > 1 ? 'Bitte beantworten Sie die folgenden Fragen' : currentQ.title) }}
+            <p v-if="primaryQuestionText" class="text-[1.05rem] font-medium leading-snug text-[#1a1612] md:text-[1.2rem]" style="font-family: Georgia, serif;">
+              {{ primaryQuestionText }}
             </p>
           </div>
 
@@ -311,10 +342,12 @@ onMounted(() => {
                   :key="opt"
                   type="button"
                   class="rounded-3xl border px-6 py-5 text-left text-base font-medium leading-snug transition md:px-7 md:py-6 md:text-lg"
-                  :class="answers[currentQ.key] === opt
+                  :class="(isOccasionMultiSelect
+                    ? ((answers[currentQ.key] as string[] || []).includes(opt))
+                    : (answers[currentQ.key] === opt))
                     ? 'border-[#8e6c2a] bg-[#8e6c2a] text-[#f5f0e8] shadow-lg shadow-[#8e6c2a]/20'
                     : 'border-[#e4d7bf] bg-[#fcf9f3] text-[#1a1612] hover:border-[#cdb98f] hover:bg-[#f6efe2]'"
-                  @click="selectOption(opt)"
+                  @click="isOccasionMultiSelect ? toggleChoiceOption(currentQ.key, String(opt)) : selectOption(opt)"
                 >
                   <span class="block text-base font-semibold md:text-lg">{{ opt }}</span>
                   <span v-if="((currentQ as any).optionDescriptions || [])[idx]" class="mt-2 block text-sm font-normal leading-snug opacity-85">
@@ -372,7 +405,7 @@ onMounted(() => {
 
             <div v-else-if="isSliderStep" class="mt-8 flex flex-col gap-8">
               <div v-for="q in currentSlideQuestions" :key="q.key">
-                <p v-if="currentSlideQuestions.length > 1" class="mb-2 text-sm font-medium leading-snug text-[#1a1612] md:text-base">
+                <p v-if="currentSlideQuestions.length > 1" class="mb-2 text-[1.05rem] font-medium leading-snug text-[#1a1612] md:text-[1.2rem]" style="font-family: Georgia, serif;">
                   {{ q.title }}
                 </p>
                 <div class="relative flex justify-between text-base font-medium md:text-lg">
