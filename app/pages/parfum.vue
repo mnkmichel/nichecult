@@ -24,6 +24,15 @@ const isTested = (perfumeId: number) => Number.isFinite(ratingByPerfumeId.value[
 
 const relevanceScore = (perfumeId: number) => ratingByPerfumeId.value[Number(perfumeId)] ?? -1
 
+const scoreOutOfFiveLabel = (perfumeId: number) => {
+  const raw = relevanceScore(perfumeId)
+  if (!Number.isFinite(raw) || raw < 0) {
+    return '1/5'
+  }
+  const normalized = Math.max(1, Math.min(5, raw / 2))
+  return `${normalized.toFixed(1).replace('.0', '')}/5`
+}
+
 const sortedPerfumes = computed(() => {
   const items = [...perfumes.value]
 
@@ -192,40 +201,37 @@ onMounted(loadData)
             :key="`${perfumeIdOf(item)}-${item.name}`"
             class="group overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_45px_rgba(79,61,31,0.09)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(79,61,31,0.14)]"
           >
-            <div class="relative">
+            <div class="relative nc-perfume-card-media nc-perfume-card-media-tall -mb-1 overflow-hidden bg-[linear-gradient(180deg,#f8f4ec,#f0e5d3)] ring-1 ring-[#eadfc9]">
               <img
                 v-if="item.image_url"
                 :src="item.image_url"
                 alt="Parfumbild"
-                class="h-56 w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                class="nc-perfume-card-image"
               >
-              <div v-else class="h-56 w-full bg-[#e7dbc7]"></div>
-              <div class="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
-                <span class="rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5a4820] shadow-sm backdrop-blur">
-                  {{ item.brand_name || 'Niche Cult' }}
-                </span>
+              <div v-else class="h-full w-full rounded-2xl bg-[#e7dbc7]"></div>
+              <div class="absolute left-3 top-2 flex flex-col items-start gap-1">
                 <span
                   v-if="isTested(perfumeIdOf(item))"
-                  class="rounded-full bg-emerald-600/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm"
+                  class="rounded-full bg-emerald-600/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-sm"
                 >
                   Getestet
                 </span>
                 <span
                   v-else
-                  class="rounded-full bg-amber-600/90 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm"
+                  class="rounded-full bg-amber-600/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-sm"
                 >
                   Neu
                 </span>
               </div>
             </div>
 
-            <div class="space-y-4 p-5 sm:p-6">
-              <div class="space-y-2">
-                <h3 class="text-xl font-semibold tracking-tight text-[#1a1612]">{{ item.name }}</h3>
-                <p v-if="item.description" class="text-sm leading-6 text-[#5a4820]">{{ item.description }}</p>
+            <div class="space-y-2 p-3 pb-2.5 sm:p-3.5 sm:pb-3">
+              <div class="space-y-0.5">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-[#7f6a4c] sm:text-[11px]">{{ item.brand_name || 'Niche Cult' }}</p>
+                <h3 class="text-[0.98rem] font-semibold tracking-tight text-[#1a1612] sm:text-[1.06rem]">{{ item.name }}</h3>
               </div>
 
-              <div class="space-y-1 text-sm">
+              <div class="space-y-0.5 text-[12px]">
                 <template v-if="isTested(perfumeIdOf(item))">
                   <p class="text-stone-500 line-through">Normal: {{ priceLabel(Number(item.price_cents || 0)) }}</p>
                   <p class="font-semibold text-emerald-700">Rabattiert: {{ priceLabel(discountedCents(Number(item.price_cents || 0))) }}</p>
@@ -235,9 +241,9 @@ onMounted(loadData)
                 </template>
               </div>
 
-              <div class="flex flex-wrap gap-2">
+              <div class="flex flex-wrap gap-1">
                 <span v-if="isTested(perfumeIdOf(item))" class="rounded-full bg-[#e5f7ee] px-3 py-1 text-xs font-semibold text-emerald-800">
-                  Score {{ relevanceScore(perfumeIdOf(item)).toFixed(1) }}
+                  Score {{ scoreOutOfFiveLabel(perfumeIdOf(item)) }}
                 </span>
                 <span v-else class="rounded-full bg-[#f8ecd4] px-3 py-1 text-xs font-semibold text-amber-900">Noch nicht getestet</span>
               </div>

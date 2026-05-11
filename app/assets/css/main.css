@@ -71,6 +71,49 @@
 	.nc-enter {
 		animation: nc-rise 420ms ease-out both;
 	}
+
+	/* Unified perfume-card media handling: full bottle visible, centered, no crop */
+	.nc-perfume-card-media {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 18.25rem;
+		padding: 0.15rem;
+	}
+
+	.nc-perfume-card-media-lg {
+		height: 20rem;
+	}
+
+	.nc-perfume-card-media-tall {
+		height: 23rem;
+		padding: 0;
+	}
+
+	.nc-perfume-card-image {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		object-position: center;
+	}
+
+	@media (min-width: 768px) {
+		.nc-perfume-card-media {
+			height: 20rem;
+			padding: 0.2rem;
+		}
+
+		.nc-perfume-card-media-lg {
+			height: 22rem;
+		}
+
+		.nc-perfume-card-media-tall {
+			height: 26rem;
+			padding: 0;
+		}
+	}
 }
 
 @keyframes nc-rise {

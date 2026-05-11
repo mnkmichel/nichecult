@@ -664,29 +664,39 @@ onUnmounted(() => {
               :key="perfume.perfume_id"
               class="group mx-auto w-full max-w-85 overflow-hidden rounded-[30px] border border-white/80 bg-white/78 shadow-[0_18px_40px_rgba(62,45,20,0.08)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(62,45,20,0.14)]"
             >
-              <div class="flex min-h-16 flex-col items-center justify-center px-4 pt-4 text-center text-[#8f6b2c]">
-                <p class="min-h-6 text-xs font-semibold uppercase tracking-[0.2em]">{{ statusHeading(perfume) }}</p>
-                <p class="min-h-6 text-sm font-medium text-[#6f5b3f]">{{ statusSubheading(perfume) }}</p>
-              </div>
-
-              <div class="overflow-hidden bg-[linear-gradient(180deg,#f8f4ec,#f0e5d3)] ring-1 ring-[#eadfc9]">
+              <div class="relative nc-perfume-card-media nc-perfume-card-media-tall -mb-1 overflow-hidden bg-[linear-gradient(180deg,#f8f4ec,#f0e5d3)] ring-1 ring-[#eadfc9]">
                   <img
                     v-if="perfume.image_url"
                     :src="perfume.image_url"
                     alt="Parfumbild"
-                    class="block h-64 w-full object-cover transition duration-500 group-hover:scale-[1.04] md:h-72"
+                    class="nc-perfume-card-image"
                   >
-                  <div v-else class="h-64 w-full bg-[#ece4d3] md:h-72" />
+                  <div v-else class="h-full w-full rounded-2xl bg-[#ece4d3]" />
+
+                  <div class="absolute left-3 top-2 flex flex-col items-start gap-1">
+                    <span
+                      v-if="statusHeading(perfume)"
+                      class="rounded-full bg-[#8e6c2a]/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white shadow-sm"
+                    >
+                      {{ statusHeading(perfume) }}
+                    </span>
+                    <span
+                      v-if="statusSubheading(perfume)"
+                      class="rounded-full bg-white/88 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5a4820] shadow-sm backdrop-blur"
+                    >
+                      {{ statusSubheading(perfume) }}
+                    </span>
+                  </div>
               </div>
 
-              <div class="px-5 pb-5 pt-4 text-center">
-                <p class="text-xs uppercase tracking-[0.22em] text-[#7f6a4c] md:text-sm">{{ perfume.brand_name }}</p>
-                <p class="mt-1 text-[21px] leading-tight text-[#1c1712] md:text-[28px]">{{ perfume.name }}</p>
+              <div class="px-3.5 pb-2.5 pt-2 text-center md:px-4 md:pb-3">
+                <p class="text-[10px] uppercase tracking-[0.18em] text-[#7f6a4c] md:text-[11px]">{{ perfume.brand_name }}</p>
+                <p class="mt-0.5 text-[18px] leading-tight text-[#1c1712] md:text-[22px]">{{ perfume.name }}</p>
 
-                <div class="mt-3 text-sm text-[#1f1b18]">
+                <div class="mt-2 text-[12px] leading-tight text-[#1f1b18]">
                   <template v-if="isRated(perfume)">
                     <span class="font-semibold">{{ priceLabel(discountedCents(perfume.price_cents), perfume.size_ml) }}</span>
-                    <span class="mt-1 block text-xs text-[#5e513d] md:text-sm">
+                    <span class="mt-0.5 block text-[11px] text-[#5e513d] md:text-xs">
                       (regulär {{ priceOnlyLabel(perfume.price_cents) }})
                     </span>
                   </template>
@@ -697,7 +707,7 @@ onUnmounted(() => {
 
                 <button
                   type="button"
-                  class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-[#1c1712] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#2b2119] md:text-[15px]"
+                  class="mt-2.5 inline-flex w-full items-center justify-center rounded-2xl bg-[#1c1712] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#2b2119] md:text-[14px]"
                   :disabled="isDeadlineExpired"
                   :class="isDeadlineExpired ? 'cursor-not-allowed opacity-50' : ''"
                   @click="startPerfumeRating(index)"

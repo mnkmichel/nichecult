@@ -132,7 +132,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="nc-page relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(255,245,230,0.95),_rgba(245,240,232,1)_42%,_rgba(236,228,214,1)_100%)]">
+  <main class="nc-page relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,245,230,0.95),rgba(245,240,232,1)_42%,rgba(236,228,214,1)_100%)]">
     <div class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(255,255,255,0))]" />
     <div class="nc-page-frame relative">
       <SiteHeaderNav title="Ihre Samples" active="samples" />
@@ -190,14 +190,14 @@ onUnmounted(() => {
               :key="item.user_sample_set_id"
               class="group overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_45px_rgba(79,61,31,0.09)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(79,61,31,0.14)]"
             >
-              <div class="relative">
+              <div class="relative nc-perfume-card-media">
                 <img
                   v-if="item.image_url"
                   :src="item.image_url"
                   alt="Setbild"
-                  class="h-56 w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                  class="nc-perfume-card-image"
                 />
-                <div v-else class="h-56 w-full bg-[#e7dbc7]"></div>
+                <div v-else class="h-full w-full rounded-2xl bg-[#e7dbc7]"></div>
                 <div class="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
                   <span class="rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5a4820] shadow-sm backdrop-blur">
                     {{ item.perfume_count }} Parfums
