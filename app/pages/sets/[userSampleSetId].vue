@@ -22,8 +22,9 @@ const currentQuestion = ref(0) // 0..slideConfig-1 = questions, slideConfig.leng
 const showOverview = ref(true)
 const activeDuftInfo = ref<string | null>(null)
 
-const currentQuestionStepLabel = computed(() => `${Math.min(currentQuestion.value + 1, slideConfig.length)} / ${slideConfig.length}`)
-const currentQuestionProgress = computed(() => `${Math.min(((currentQuestion.value + 1) / slideConfig.length) * 100, 100)}%`)
+const currentQuestionStepLabel = computed(() => `${Math.min(currentQuestion.value + 1, slideConfig.length)} von ${slideConfig.length}`)
+const currentQuestionPercentage = computed(() => Math.round(Math.min(((currentQuestion.value + 1) / slideConfig.length) * 100, 100)))
+const currentQuestionProgress = computed(() => `${currentQuestionPercentage.value}%`)
 
 const duftfamilieDescriptions: Record<string, string> = {
   Zitrus: 'Erinnert an Zitrone, Bergamotte, Grapefruit oder Orangenschale.',
@@ -216,7 +217,7 @@ const ensureAnswers = (perfumeId: number) => {
   const defaults: Record<string, any> = {
     gender: 2,
     season: 2,
-    occasion: 2,
+    occasion: [],
     warmFrisch: 2,
     naturalSynthetisch: 2,
     intensivDezent: 2,
@@ -278,6 +279,16 @@ const makeDisplayQuestion = (q: UnifiedQuestion | undefined): DisplayQuestion | 
   
   switch (type) {
     case 'choice':
+      if (key === 'gender') {
+        return {
+          type: 'slider',
+          key,
+          title,
+          left: 'Männlich',
+          center: 'Unisex',
+          right: 'Weiblich',
+        }
+      }
       return {
         type: 'choice',
         key,
@@ -365,6 +376,21 @@ const currentQ = computed<DisplayQuestion>(() => {
   return (first || questions.value[0]) as DisplayQuestion
 })
 
+const isOccasionMultiSelect = computed(() => currentQ.value.key === 'occasion')
+const isStepWithoutIntroPrompt = computed(() => {
+  const keys = currentSlideQuestions.value.map(q => q.key)
+  const isWarmNatural = keys.length === 2 && keys.includes('warmFrisch') && keys.includes('naturalSynthetisch')
+  const isSweetSexy = keys.length === 2 && keys.includes('sweetness') && keys.includes('sexyClean')
+  return isWarmNatural || isSweetSexy
+})
+
+const primaryQuestionText = computed(() => {
+  if (currentSlideQuestions.value.length > 1) {
+    return isStepWithoutIntroPrompt.value ? '' : 'Bitte beantworten Sie die folgenden Fragen'
+  }
+  return currentQ.value?.title || ''
+})
+
 const getScaleValue = (perfumeId: number, key: string) => getAnswerValue(perfumeId, key) as number
 const setScaleValue = (perfumeId: number, key: string, value: number) => {
   setAnswerValue(perfumeId, key, value)
@@ -383,6 +409,18 @@ const toggleMultiOption = (perfumeId: number, key: string, opt: string) => {
   const idx = arr.indexOf(opt)
   if (idx >= 0) arr.splice(idx, 1)
   else arr.push(opt)
+}
+
+const toggleChoiceMultiOption = (perfumeId: number, key: string, opt: string) => {
+  const current = getAnswerValue(perfumeId, key)
+  const arr = Array.isArray(current) ? current : []
+  const idx = arr.indexOf(opt)
+  if (idx >= 0) {
+    arr.splice(idx, 1)
+  } else {
+    arr.push(opt)
+  }
+  setAnswerValue(perfumeId, key, arr)
 }
 
 const toggleDuftInfo = (opt: string) => {
@@ -430,6 +468,8 @@ const canContinue = computed(() => {
   for (const q of qs) {
     const val = getAnswerValue(p.perfume_id, q.key)
     if (q.type === 'multi') {
+      if (!Array.isArray(val) || val.length === 0) return false
+    } else if (q.type === 'choice' && q.key === 'occasion') {
       if (!Array.isArray(val) || val.length === 0) return false
     } else if (val === undefined || val === null) {
       return false
@@ -688,15 +728,6 @@ onUnmounted(() => {
                 </p>
               </div>
 
-              <div class="min-w-40">
-                <div class="mb-2 flex items-center justify-between text-xs font-medium text-[#6e6048]">
-                  <span>Fortschritt</span>
-                  <span>{{ currentQuestionStepLabel }}</span>
-                </div>
-                <div class="h-2 overflow-hidden rounded-full bg-[#eadfcb]">
-                  <div class="h-full rounded-full bg-[#8e6c2a] transition-all" :style="{ width: currentQuestionProgress }" />
-                </div>
-              </div>
             </div>
           </div>
 
@@ -743,8 +774,16 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div class="mt-5 h-2 overflow-hidden rounded-full bg-[#eadfcb]">
-                <div class="h-full rounded-full bg-[#8e6c2a] transition-all" :style="{ width: currentQuestionProgress }" />
+              <div class="mt-5 mb-6 space-y-3">
+                <div class="flex items-center justify-between gap-4">
+                  <p class="text-xs font-semibold uppercase tracking-[0.22em] text-[#8b6c2d]">
+                    Schritt {{ currentQuestionStepLabel }}
+                  </p>
+                  <p class="text-xs font-semibold text-[#6b5431]">{{ currentQuestionPercentage }}%</p>
+                </div>
+                <div class="h-2 overflow-hidden rounded-full bg-[#eadfc9]">
+                  <div class="h-full rounded-full bg-[#8e6c2a] transition-all duration-300" :style="{ width: currentQuestionProgress }" />
+                </div>
               </div>
 
               <!-- Error -->
@@ -752,6 +791,11 @@ onUnmounted(() => {
 
               <!-- Answer area -->
               <div class="mt-8 flex flex-1 flex-col justify-center md:mt-10">
+                <div class="space-y-1">
+                  <p v-if="primaryQuestionText" class="text-[1.05rem] font-medium leading-snug text-[#1a1612] md:text-[1.2rem]" style="font-family: Georgia, serif;">
+                    {{ primaryQuestionText }}
+                  </p>
+                </div>
 
               <!-- Choice pair (gender, etc) -->
               <template v-if="currentQ.type === 'choice' && currentQ.layout === 'pair'">
@@ -797,10 +841,14 @@ onUnmounted(() => {
                     :key="opt"
                     type="button"
                     class="rounded-3xl border px-5 py-5 text-left transition"
-                    :class="getAnswerValue(currentPerfume.perfume_id, currentQ.key) === opt
+                    :class="(isOccasionMultiSelect
+                      ? ((getAnswerValue(currentPerfume.perfume_id, currentQ.key) as string[] || []).includes(opt))
+                      : (getAnswerValue(currentPerfume.perfume_id, currentQ.key) === opt))
                       ? 'border-[#8e6c2a] bg-[#8e6c2a] text-[#f5f0e8] shadow-lg shadow-[#8e6c2a]/20'
                       : 'border-[#e4d7bf] bg-[#fcf9f3] text-[#1a1612] hover:border-[#cdb98f] hover:bg-[#f6efe2]'"
-                    @click="setAnswerValue(currentPerfume.perfume_id, currentQ.key, opt)"
+                    @click="isOccasionMultiSelect
+                      ? toggleChoiceMultiOption(currentPerfume.perfume_id, currentQ.key, String(opt))
+                      : setAnswerValue(currentPerfume.perfume_id, currentQ.key, opt)"
                   >
                     <span class="block text-base font-semibold md:text-lg">{{ opt }}</span>
                     <span v-if="((currentQ as any).optionDescriptions || [])[idx]" class="mt-2 block text-sm font-normal leading-snug opacity-85">
@@ -814,7 +862,7 @@ onUnmounted(() => {
               <template v-else-if="currentQ.type === 'slider'">
                 <div class="flex flex-col gap-8">
                   <div v-for="q in currentSlideQuestions" :key="q.key" class="mt-8">
-                    <p v-if="currentSlideQuestions.length > 1" class="mb-3 text-sm font-semibold text-[#5a4820]">{{ q.title }}</p>
+                    <p v-if="currentSlideQuestions.length > 1" class="mb-3 text-[1.05rem] font-medium leading-snug text-[#1a1612] md:text-[1.2rem]" style="font-family: Georgia, serif;">{{ q.title }}</p>
                     <div class="relative flex justify-between text-xs font-medium md:text-sm">
                       <span>{{ (q as any).left }}</span>
                       <span class="absolute left-1/2 -translate-x-1/2">{{ (q as any).center }}</span>
@@ -827,10 +875,10 @@ onUnmounted(() => {
                           v-for="i in 5"
                           :key="`${q.key}-${i}`"
                           type="button"
-                          class="relative h-9 w-9 rounded-full border-2 transition text-xs"
+                          class="relative h-9 w-9 rounded-md border-2 transition"
                           :class="getScaleValue(currentPerfume.perfume_id, q.key) === (i - 1)
-                            ? 'border-[#8e6c2a] bg-[#8e6c2a] shadow-lg shadow-[#8e6c2a]/20'
-                            : 'border-[#d2c2a1] bg-[#fcf9f3] hover:bg-[#f0e7d7]'"
+                            ? 'border-[#8e6c2a] bg-[#8e6c2a]'
+                            : 'border-[#b99a57] bg-[#f5f0e8] hover:bg-[#e8ddc8]'"
                           @click="setScaleValue(currentPerfume.perfume_id, q.key, i - 1)"
                         />
                       </div>
@@ -852,10 +900,10 @@ onUnmounted(() => {
                         v-for="i in 5"
                         :key="i"
                         type="button"
-                        class="relative h-10 w-10 rounded-full border-2 transition"
+                        class="relative h-9 w-9 rounded-md border-2 transition"
                         :class="getScaleValue(currentPerfume.perfume_id, currentSlideFirstQuestion?.key || '') === (i - 1)
-                          ? 'border-[#8e6c2a] bg-[#8e6c2a] shadow-lg shadow-[#8e6c2a]/20'
-                          : 'border-[#d2c2a1] bg-[#fcf9f3] hover:bg-[#f0e7d7]'"
+                          ? 'border-[#8e6c2a] bg-[#8e6c2a]'
+                          : 'border-[#b99a57] bg-[#f5f0e8] hover:bg-[#e8ddc8]'"
                         @click="setScaleValue(currentPerfume.perfume_id, currentSlideFirstQuestion?.key || '', i - 1)"
                       />
                     </div>

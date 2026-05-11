@@ -43,7 +43,7 @@ export const unifiedQuestions: Question[] = [
       options: ['Mann', 'Frau'],
     },
     rating: {
-      title: 'Welches Geschlecht empfanden Sie beim Parfum?',
+      title: 'Empfinden Sie das Parfum als männlich oder weiblich?',
       options: ['Männlich', 'Unisex', 'Weiblich'],
     },
   },
@@ -56,7 +56,7 @@ export const unifiedQuestions: Question[] = [
       options: ['Frühling und Sommer', 'Herbst und Winter', 'Offen lassen'],
     },
     rating: {
-      title: 'Für welche Jahreszeit ist das Parfum geeignet?',
+      title: 'Zu welchen Jahreszeiten passt dieses Parfum?',
       options: ['Frühling und Sommer', 'Herbst und Winter', 'Für beide Jahreszeiten'],
     },
   },
@@ -129,7 +129,7 @@ export const unifiedQuestions: Question[] = [
       right: 'Synthetisch',
     },
     rating: {
-      title: 'Natürlich oder Synthetisch?',
+      title: 'Empfinden Sie das Parfum als natürlich oder synthetisch?',
       left: 'Natürlich',
       center: 'Neutral',
       right: 'Synthetisch',
@@ -165,7 +165,7 @@ export const ratingOnlyQuestions: Question[] = [
       right: 'Sehr süß',
     },
     rating: {
-      title: 'Süß oder Nicht süß?',
+      title: 'Empfinden Sie das Parfum als süß oder nicht süß?',
       left: 'Nicht süß',
       center: 'Neutral',
       right: 'Süß',
@@ -181,10 +181,10 @@ export const ratingOnlyQuestions: Question[] = [
       right: 'Sexy',
     },
     rating: {
-      title: 'Sexy oder Clean?',
-      left: 'Sexy/Sinnlich',
-      center: 'Ausgewogen',
-      right: 'Clean/Sachlich',
+      title: 'Empfinden Sie das Parfum als sexy oder als clean?',
+      left: 'Sexy',
+      center: 'Neutral',
+      right: 'Clean',
     },
   },
   {
@@ -194,7 +194,7 @@ export const ratingOnlyQuestions: Question[] = [
       title: 'Welche Duftfamilien sagen Ihnen am meisten zu?',
     },
     rating: {
-      title: 'Welchen Duftfamilien ordnen Sie diesen Duft zu?',
+      title: 'Welche Duftfamilien nehmen Sie bei diesem Parfum wahr?',
     },
     options: ['Zitrus', 'Fruchtig', 'Blumig', 'Pudrig', 'Aquatisch', 'Holzig', 'Grün', 'Balsamisch', 'Aromatisch', 'Erdig', 'Rauchig', 'Würzig', 'Orientalisch', 'Ledrig', 'Gourmand'],
   },
@@ -206,8 +206,8 @@ export const ratingOnlyQuestions: Question[] = [
       labels: ['Sehr schlecht', 'Schlecht', 'OK', 'Gut', 'Perfekt'],
     },
     rating: {
-      title: 'Wie gut passt dieser Duft zu Ihren Vorstellungen?',
-      labels: ['Sehr schlecht', 'Schlecht', 'OK', 'Gut', 'Perfekt'],
+      title: 'Wie gut trifft dieses Parfum Ihren Geschmack?',
+      labels: ['Nicht', 'Teilweise', 'Gut', 'Sehr gut', 'Ideal'],
     },
   },
 ]
