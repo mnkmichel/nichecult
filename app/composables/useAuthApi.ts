@@ -42,6 +42,15 @@ type AdminUser = {
   last_name: string | null
   is_admin: number | boolean
   sample_count: number
+  assigned_sets_summary?: string | null
+}
+
+type AdminDefaultSampleSet = {
+  id: number
+  title: string
+  status: string
+  rating_deadline_at?: string | null
+  resolution: 'title-match' | 'first-active'
 }
 
 type PerfumeItem = {
@@ -242,6 +251,14 @@ export const useAuthApi = () => {
     })
   }
 
+  const getAdminDefaultSampleSet = async (token: string) => {
+    return await $fetch<{ ok: boolean; defaultSampleSet?: AdminDefaultSampleSet; error?: string }>(apiUrl('admin-default-sample-set.php'), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  }
+
   const listAdminPerfumes = async (token: string) => {
     return await $fetch<{ ok: boolean; perfumes?: PerfumeItem[]; error?: string }>(apiUrl('admin-list-perfumes.php'), {
       headers: {
@@ -336,6 +353,7 @@ export const useAuthApi = () => {
     listSamples,
     saveSampleRating,
     listAdminUsers,
+    getAdminDefaultSampleSet,
     deleteAdminUser,
     listAdminPerfumes,
     listAdminSampleSets,
