@@ -36,9 +36,18 @@ try {
             u.last_name,
             u.is_admin,
             u.created_at,
-                COUNT(uss.id) AS sample_count
+                        COUNT(DISTINCT uss.id) AS sample_count,
+                        COALESCE(
+                            GROUP_CONCAT(
+                                DISTINCT CONCAT(ss.title, " [", uss.set_status, "]")
+                                ORDER BY ss.id ASC
+                                SEPARATOR "||"
+                            ),
+                            ""
+                        ) AS assigned_sets_summary
          FROM users u
-            LEFT JOIN user_sample_sets uss ON uss.user_id = u.id
+                 LEFT JOIN user_sample_sets uss ON uss.user_id = u.id
+                 LEFT JOIN sample_sets ss ON ss.id = uss.sample_set_id
          GROUP BY u.id
          ORDER BY u.created_at DESC'
     );
