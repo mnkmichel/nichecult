@@ -3,11 +3,12 @@ definePageMeta({
   middleware: 'admin',
 })
 
-const { listAdminUsers, deleteAdminUser, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics } = useAuthApi()
+const { listAdminUsers, getAdminDefaultSampleSet, deleteAdminUser, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics } = useAuthApi()
 const config = useRuntimeConfig()
 const apiBase = (config.public.apiBase as string).replace(/\/$/, '')
 
 const users = ref<Array<Record<string, any>>>([])
+const defaultSampleSet = ref<Record<string, any> | null>(null)
 const perfumes = ref<Array<Record<string, any>>>([])
 const sampleSets = ref<Array<Record<string, any>>>([])
 const createdPerfume = ref<Record<string, any> | null>(null)
@@ -288,14 +289,18 @@ const loadAdminData = async () => {
 
     analyticsLoading.value = true
 
-    const [usersRes, perfumesRes, setsRes, analyticsRes] = await Promise.all([
+    const defaultSetPromise = getAdminDefaultSampleSet(token).catch(() => ({ ok: false }))
+
+    const [usersRes, defaultSetRes, perfumesRes, setsRes, analyticsRes] = await Promise.all([
       listAdminUsers(token),
+      defaultSetPromise,
       listAdminPerfumes(token),
       listAdminSampleSets(token),
       listAdminRatingAnalytics(token),
     ])
 
     users.value = usersRes.users || []
+    defaultSampleSet.value = (defaultSetRes as any)?.defaultSampleSet || null
     perfumes.value = perfumesRes.perfumes || []
     sampleSets.value = setsRes.sampleSets || []
     analyticsRows.value = analyticsRes.rows || []
@@ -742,6 +747,12 @@ const filteredUsers = computed(() => {
       || matchesQuery(user.id, userSearch.value)
   })
 })
+
+const userAssignedSets = (user: Record<string, any>) => {
+  const raw = String(user.assigned_sets_summary || '').trim()
+  if (!raw) return []
+  return raw.split('||').map((entry) => entry.trim()).filter(Boolean)
+}
 
 const parseOverallMatch = (value: unknown): number | null => {
   const n = Number(value)
@@ -1414,6 +1425,15 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <div class="mt-4 rounded-2xl border border-stone-800 bg-stone-950/60 p-4 text-sm text-stone-300">
+            <p class="font-semibold text-stone-100">Standard-Set für Auto-Zuweisung</p>
+            <p v-if="defaultSampleSet" class="mt-1">
+              #{{ defaultSampleSet.id }} - {{ defaultSampleSet.title }}
+              <span class="text-stone-500">(Ermittlung: {{ defaultSampleSet.resolution === 'title-match' ? 'Titel-Match' : 'Erstes aktives Set' }})</span>
+            </p>
+            <p v-else class="mt-1 text-red-300">Kein aktives Standard-Set gefunden oder Diagnose-Endpoint nicht erreichbar.</p>
+          </div>
+
           <div class="mt-4 grid gap-3 md:grid-cols-[1fr_240px]">
             <input v-model="userSearch" class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5" type="text" placeholder="Suche nach E-Mail oder ID" />
             <div class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5 text-sm text-stone-300">
@@ -1437,6 +1457,7 @@ onUnmounted(() => {
                   <th class="px-4 py-3 font-semibold">E-Mail</th>
                   <th class="px-4 py-3 font-semibold">Name</th>
                   <th class="px-4 py-3 font-semibold">Rolle</th>
+                  <th class="px-4 py-3 font-semibold">Sample-Set-Zuordnung</th>
                   <th class="px-4 py-3 font-semibold">Favorit-Parfüm</th>
                   <th class="px-4 py-3 font-semibold"></th>
                 </tr>
@@ -1450,6 +1471,18 @@ onUnmounted(() => {
                     <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="user.is_admin ? 'bg-amber-400/20 text-amber-200' : 'bg-stone-800 text-stone-300'">
                       {{ user.is_admin ? 'Admin' : 'User' }}
                     </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div v-if="userAssignedSets(user).length" class="flex flex-wrap gap-1.5">
+                      <span
+                        v-for="setLabel in userAssignedSets(user)"
+                        :key="`${user.id}-${setLabel}`"
+                        class="rounded-full border border-sky-800/60 bg-sky-900/30 px-2.5 py-1 text-xs font-medium text-sky-200"
+                      >
+                        {{ setLabel }}
+                      </span>
+                    </div>
+                    <span v-else class="text-stone-600">Keine Zuweisung</span>
                   </td>
                   <td class="px-4 py-3">
                     <span

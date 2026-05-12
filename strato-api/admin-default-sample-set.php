@@ -7,6 +7,7 @@ $config = require __DIR__ . '/config.php';
 require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/jwt.php';
+require __DIR__ . '/lib/sample_set_assignment.php';
 
 setCorsHeaders($config);
 handlePreflightAndExit();
@@ -28,32 +29,7 @@ if (!$claims || empty($claims['admin'])) {
 try {
     $pdo = getPdo($config);
 
-    $setRow = $pdo->query(
-        'SELECT id, title, status, rating_deadline_at
-         FROM sample_sets
-         WHERE LOWER(TRIM(title)) IN ("erstes set", "erste duftselektion")
-         ORDER BY
-            CASE LOWER(TRIM(title))
-              WHEN "erstes set" THEN 0
-              WHEN "erste duftselektion" THEN 1
-              ELSE 2
-            END,
-            id ASC
-         LIMIT 1'
-    )->fetch();
-
-    $resolution = 'title-match';
-
-    if (!$setRow) {
-        $setRow = $pdo->query(
-            'SELECT id, title, status, rating_deadline_at
-             FROM sample_sets
-             WHERE status = "active"
-             ORDER BY id ASC
-             LIMIT 1'
-        )->fetch();
-        $resolution = 'first-active';
-    }
+    $setRow = resolveDefaultSampleSet($pdo);
 
     if (!$setRow) {
         jsonResponse([
@@ -69,7 +45,7 @@ try {
             'title' => (string) $setRow['title'],
             'status' => (string) $setRow['status'],
             'rating_deadline_at' => $setRow['rating_deadline_at'] ?? null,
-            'resolution' => $resolution,
+            'resolution' => 'shared-resolver',
         ],
     ]);
 } catch (Throwable $e) {

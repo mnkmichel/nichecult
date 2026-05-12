@@ -6,6 +6,7 @@ $config = require __DIR__ . '/config.php';
 
 require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/db.php';
+require __DIR__ . '/lib/sample_set_assignment.php';
 
 setCorsHeaders($config);
 handlePreflightAndExit();
@@ -59,68 +60,20 @@ try {
 
     $newUserId = (int) $pdo->lastInsertId();
 
-    // Auto-assign default sample set to every new user.
-    // Priority: "Erstes Set" -> "Erste Duftselektion" -> first active set.
-    $setRow = $pdo->prepare(
-        'SELECT id, rating_deadline_at, title
-         FROM sample_sets
-         WHERE LOWER(TRIM(title)) IN ("erstes set", "erste duftselektion")
-         ORDER BY
-            CASE LOWER(TRIM(title))
-              WHEN "erstes set" THEN 0
-              WHEN "erste duftselektion" THEN 1
-              ELSE 2
-            END,
-            id ASC
-         LIMIT 1'
-    );
-    $setRow->execute();
-    $sampleSet = $setRow->fetch();
+    ensureSampleSetDeadlineColumns($pdo);
 
-    if (!$sampleSet) {
-        $fallbackSet = $pdo->prepare(
-            'SELECT id, rating_deadline_at, title
-             FROM sample_sets
-             WHERE status = "active"
-             ORDER BY id ASC
-             LIMIT 1'
-        );
-        $fallbackSet->execute();
-        $sampleSet = $fallbackSet->fetch();
-    }
-
-    if (!$sampleSet) {
+    $sampleSet = resolveDefaultSampleSet($pdo);
+    if ($sampleSet === null) {
         throw new RuntimeException('No active sample set configured for auto-assignment.');
     }
 
-    // Ensure rating_deadline_at column exists before inserting.
-    $colCheck = $pdo->prepare(
-        'SELECT COUNT(*) FROM information_schema.COLUMNS
-         WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = :table_name
-           AND COLUMN_NAME = :column_name'
+    assignUserToSampleSet(
+        $pdo,
+        $newUserId,
+        (int) $sampleSet['id'],
+        'delivered',
+        $sampleSet['rating_deadline_at'] ?? null
     );
-    $colCheck->execute(['table_name' => 'user_sample_sets', 'column_name' => 'rating_deadline_at']);
-    $hasDeadlineCol = (int) $colCheck->fetchColumn() > 0;
-
-    if (!$hasDeadlineCol) {
-        $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
-    }
-
-    $assignStmt = $pdo->prepare(
-        'INSERT IGNORE INTO user_sample_sets (user_id, sample_set_id, set_status, rating_deadline_at)
-         VALUES (:user_id, :sample_set_id, :set_status, :rating_deadline_at)'
-    );
-    $assignStmt->execute([
-        'user_id'            => $newUserId,
-        'sample_set_id'      => (int) $sampleSet['id'],
-        'set_status'         => 'delivered',
-        'rating_deadline_at' => $sampleSet['rating_deadline_at'] ?? null,
-    ]);
-
-    if ((int) $assignStmt->rowCount() < 1) {
-        throw new RuntimeException('Auto-assignment to default sample set failed.');
-    }
 
     $pdo->commit();
 
