@@ -26,7 +26,6 @@ if (!$claims || empty($claims['sub'])) {
 }
 
 $userId = (int) $claims['sub'];
-$sampleSetId = 1;
 
 try {
     $pdo = getPdo($config);
@@ -77,11 +76,17 @@ try {
         ]);
     }
 
-    $checkSet = $pdo->prepare('SELECT id, rating_deadline_at FROM sample_sets WHERE id = :id LIMIT 1');
-    $checkSet->execute(['id' => $sampleSetId]);
+    $checkSet = $pdo->prepare(
+        'SELECT id, rating_deadline_at
+         FROM sample_sets
+         WHERE title = :title
+         ORDER BY id ASC
+         LIMIT 1'
+    );
+    $checkSet->execute(['title' => 'Erstes Set']);
     $setRow = $checkSet->fetch();
     if (!$setRow) {
-        jsonResponse(['ok' => false, 'error' => 'Sample set not found'], 404);
+        jsonResponse(['ok' => false, 'error' => 'Sample set "Erstes Set" not found'], 404);
     }
 
     $ratingDeadlineAt = $setRow['rating_deadline_at'] ?? null;
@@ -96,7 +101,7 @@ try {
     );
     $stmt->execute([
         'user_id' => $userId,
-        'sample_set_id' => $sampleSetId,
+        'sample_set_id' => (int) $setRow['id'],
         'set_status' => 'delivered',
         'rating_deadline_at' => $ratingDeadlineAt,
     ]);

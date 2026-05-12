@@ -57,10 +57,15 @@ try {
 
     $newUserId = (int) $pdo->lastInsertId();
 
-    // Auto-assign Sample Set 1 ("Erstes Set") to every new user.
-    $autoAssignSampleSetId = 1;
-    $setRow = $pdo->prepare('SELECT id, rating_deadline_at FROM sample_sets WHERE id = :id LIMIT 1');
-    $setRow->execute(['id' => $autoAssignSampleSetId]);
+    // Auto-assign the existing set titled "Erstes Set" to every new user.
+    $setRow = $pdo->prepare(
+        'SELECT id, rating_deadline_at
+         FROM sample_sets
+         WHERE title = :title
+         ORDER BY id ASC
+         LIMIT 1'
+    );
+    $setRow->execute(['title' => 'Erstes Set']);
     $sampleSet = $setRow->fetch();
 
     if ($sampleSet) {
@@ -84,7 +89,7 @@ try {
         );
         $assignStmt->execute([
             'user_id'            => $newUserId,
-            'sample_set_id'      => $autoAssignSampleSetId,
+            'sample_set_id'      => (int) $sampleSet['id'],
             'set_status'         => 'delivered',
             'rating_deadline_at' => $sampleSet['rating_deadline_at'] ?? null,
         ]);
