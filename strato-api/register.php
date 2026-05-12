@@ -55,9 +55,44 @@ try {
         'age' => (int) $age,
     ]);
 
+    $newUserId = (int) $pdo->lastInsertId();
+
+    // Auto-assign Sample Set 1 ("Erstes Set") to every new user.
+    $autoAssignSampleSetId = 1;
+    $setRow = $pdo->prepare('SELECT id, rating_deadline_at FROM sample_sets WHERE id = :id LIMIT 1');
+    $setRow->execute(['id' => $autoAssignSampleSetId]);
+    $sampleSet = $setRow->fetch();
+
+    if ($sampleSet) {
+        // Ensure rating_deadline_at column exists before inserting.
+        $colCheck = $pdo->prepare(
+            'SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name
+               AND COLUMN_NAME = :column_name'
+        );
+        $colCheck->execute(['table_name' => 'user_sample_sets', 'column_name' => 'rating_deadline_at']);
+        $hasDeadlineCol = (int) $colCheck->fetchColumn() > 0;
+
+        if (!$hasDeadlineCol) {
+            $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
+        }
+
+        $assignStmt = $pdo->prepare(
+            'INSERT IGNORE INTO user_sample_sets (user_id, sample_set_id, set_status, rating_deadline_at)
+             VALUES (:user_id, :sample_set_id, :set_status, :rating_deadline_at)'
+        );
+        $assignStmt->execute([
+            'user_id'            => $newUserId,
+            'sample_set_id'      => $autoAssignSampleSetId,
+            'set_status'         => 'delivered',
+            'rating_deadline_at' => $sampleSet['rating_deadline_at'] ?? null,
+        ]);
+    }
+
     jsonResponse([
         'ok' => true,
-        'userId' => (int) $pdo->lastInsertId(),
+        'userId' => $newUserId,
     ], 201);
 } catch (Throwable $e) {
     jsonResponse([
