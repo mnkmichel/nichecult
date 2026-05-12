@@ -77,16 +77,35 @@ try {
     }
 
     $checkSet = $pdo->prepare(
-        'SELECT id, rating_deadline_at
+        'SELECT id, rating_deadline_at, title
          FROM sample_sets
-         WHERE title = :title
-         ORDER BY id ASC
+         WHERE LOWER(TRIM(title)) IN ("erstes set", "erste duftselektion")
+         ORDER BY
+            CASE LOWER(TRIM(title))
+              WHEN "erstes set" THEN 0
+              WHEN "erste duftselektion" THEN 1
+              ELSE 2
+            END,
+            id ASC
          LIMIT 1'
     );
-    $checkSet->execute(['title' => 'Erstes Set']);
+    $checkSet->execute();
     $setRow = $checkSet->fetch();
+
     if (!$setRow) {
-        jsonResponse(['ok' => false, 'error' => 'Sample set "Erstes Set" not found'], 404);
+        $fallbackSet = $pdo->prepare(
+            'SELECT id, rating_deadline_at, title
+             FROM sample_sets
+             WHERE status = "active"
+             ORDER BY id ASC
+             LIMIT 1'
+        );
+        $fallbackSet->execute();
+        $setRow = $fallbackSet->fetch();
+    }
+
+    if (!$setRow) {
+        jsonResponse(['ok' => false, 'error' => 'No active sample set available'], 404);
     }
 
     $ratingDeadlineAt = $setRow['rating_deadline_at'] ?? null;

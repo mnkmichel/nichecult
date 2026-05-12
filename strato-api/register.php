@@ -46,6 +46,8 @@ try {
 
     $hash = password_hash($password, PASSWORD_DEFAULT);
 
+    $pdo->beginTransaction();
+
     $insert = $pdo->prepare('INSERT INTO users (email, password_hash, first_name, last_name, age) VALUES (:email, :password_hash, :first_name, :last_name, :age)');
     $insert->execute([
         'email' => $email,
@@ -57,49 +59,79 @@ try {
 
     $newUserId = (int) $pdo->lastInsertId();
 
-    // Auto-assign the existing set titled "Erstes Set" to every new user.
+    // Auto-assign default sample set to every new user.
+    // Priority: "Erstes Set" -> "Erste Duftselektion" -> first active set.
     $setRow = $pdo->prepare(
-        'SELECT id, rating_deadline_at
+        'SELECT id, rating_deadline_at, title
          FROM sample_sets
-         WHERE title = :title
-         ORDER BY id ASC
+         WHERE LOWER(TRIM(title)) IN ("erstes set", "erste duftselektion")
+         ORDER BY
+            CASE LOWER(TRIM(title))
+              WHEN "erstes set" THEN 0
+              WHEN "erste duftselektion" THEN 1
+              ELSE 2
+            END,
+            id ASC
          LIMIT 1'
     );
-    $setRow->execute(['title' => 'Erstes Set']);
+    $setRow->execute();
     $sampleSet = $setRow->fetch();
 
-    if ($sampleSet) {
-        // Ensure rating_deadline_at column exists before inserting.
-        $colCheck = $pdo->prepare(
-            'SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME = :table_name
-               AND COLUMN_NAME = :column_name'
+    if (!$sampleSet) {
+        $fallbackSet = $pdo->prepare(
+            'SELECT id, rating_deadline_at, title
+             FROM sample_sets
+             WHERE status = "active"
+             ORDER BY id ASC
+             LIMIT 1'
         );
-        $colCheck->execute(['table_name' => 'user_sample_sets', 'column_name' => 'rating_deadline_at']);
-        $hasDeadlineCol = (int) $colCheck->fetchColumn() > 0;
-
-        if (!$hasDeadlineCol) {
-            $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
-        }
-
-        $assignStmt = $pdo->prepare(
-            'INSERT IGNORE INTO user_sample_sets (user_id, sample_set_id, set_status, rating_deadline_at)
-             VALUES (:user_id, :sample_set_id, :set_status, :rating_deadline_at)'
-        );
-        $assignStmt->execute([
-            'user_id'            => $newUserId,
-            'sample_set_id'      => (int) $sampleSet['id'],
-            'set_status'         => 'delivered',
-            'rating_deadline_at' => $sampleSet['rating_deadline_at'] ?? null,
-        ]);
+        $fallbackSet->execute();
+        $sampleSet = $fallbackSet->fetch();
     }
+
+    if (!$sampleSet) {
+        throw new RuntimeException('No active sample set configured for auto-assignment.');
+    }
+
+    // Ensure rating_deadline_at column exists before inserting.
+    $colCheck = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = :table_name
+           AND COLUMN_NAME = :column_name'
+    );
+    $colCheck->execute(['table_name' => 'user_sample_sets', 'column_name' => 'rating_deadline_at']);
+    $hasDeadlineCol = (int) $colCheck->fetchColumn() > 0;
+
+    if (!$hasDeadlineCol) {
+        $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
+    }
+
+    $assignStmt = $pdo->prepare(
+        'INSERT IGNORE INTO user_sample_sets (user_id, sample_set_id, set_status, rating_deadline_at)
+         VALUES (:user_id, :sample_set_id, :set_status, :rating_deadline_at)'
+    );
+    $assignStmt->execute([
+        'user_id'            => $newUserId,
+        'sample_set_id'      => (int) $sampleSet['id'],
+        'set_status'         => 'delivered',
+        'rating_deadline_at' => $sampleSet['rating_deadline_at'] ?? null,
+    ]);
+
+    if ((int) $assignStmt->rowCount() < 1) {
+        throw new RuntimeException('Auto-assignment to default sample set failed.');
+    }
+
+    $pdo->commit();
 
     jsonResponse([
         'ok' => true,
         'userId' => $newUserId,
     ], 201);
 } catch (Throwable $e) {
+    if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     jsonResponse([
         'ok' => false,
         'error' => 'Register failed',
