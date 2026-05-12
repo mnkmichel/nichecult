@@ -7,6 +7,10 @@ const redirectTo = computed(() => {
   return typeof r === 'string' && r.startsWith('/') ? r : '/'
 })
 
+const registerLink = computed(() =>
+  redirectTo.value !== '/' ? `/register?redirect=${encodeURIComponent(redirectTo.value)}` : '/register'
+)
+
 const form = reactive({
   email: '',
   password: '',
@@ -70,7 +74,7 @@ const submit = async () => {
         Eingeloggt als {{ profile.email }}
       </p>
 
-      <NuxtLink to="/register" class="mt-5 inline-block text-sm text-stone-700 underline">Noch kein Konto? Registrieren</NuxtLink>
+      <NuxtLink :to="registerLink" class="mt-5 inline-block text-sm text-stone-700 underline">Noch kein Konto? Registrieren</NuxtLink>
     </div>
   </main>
 </template>

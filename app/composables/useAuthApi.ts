@@ -142,38 +142,74 @@ type SavePerfumeRatingPayload = {
 export const useAuthApi = () => {
   const config = useRuntimeConfig()
 
-  const apiBase = computed(() => (config.public.apiBase as string).replace(/\/$/, ''))
+  const normalizeApiBase = (rawValue: unknown) => {
+    let value = String(rawValue || '').trim()
+    if (!value) {
+      return '/api'
+    }
+
+    // Keep relative base paths untouched (e.g. "/api").
+    if (value.startsWith('/')) {
+      return value.replace(/\/+$/, '')
+    }
+
+    // Fix malformed protocol values like "http:api.nichecult.de".
+    value = value.replace(/^https:(?!\/\/)/i, 'https://')
+    value = value.replace(/^http:(?!\/\/)/i, 'https://')
+
+    // Always prefer HTTPS for remote API hosts.
+    value = value.replace(/^http:\/\//i, 'https://')
+
+    // Fix protocol-relative values like "//api.nichecult.de".
+    if (value.startsWith('//')) {
+      value = `https:${value}`
+    }
+
+    // Add protocol if only host is provided.
+    if (!/^https?:\/\//i.test(value)) {
+      value = `https://${value}`
+    }
+
+    return value.replace(/\/+$/, '')
+  }
+
+  const apiBase = computed(() => normalizeApiBase(config.public.apiBase as string))
+
+  const apiUrl = (path: string) => {
+    const normalizedPath = path.replace(/^\/+/, '')
+    return `${apiBase.value}/${normalizedPath}`
+  }
 
   const login = async (payload: LoginPayload) => {
-    return await $fetch<{ ok: boolean; token?: string; error?: string }>(`${apiBase.value}/login.php`, {
+    return await $fetch<{ ok: boolean; token?: string; error?: string }>(apiUrl('login.php'), {
       method: 'POST',
       body: payload,
     })
   }
 
   const register = async (payload: RegisterPayload) => {
-    return await $fetch<{ ok: boolean; userId?: number; error?: string }>(`${apiBase.value}/register.php`, {
+    return await $fetch<{ ok: boolean; userId?: number; error?: string }>(apiUrl('register.php'), {
       method: 'POST',
       body: payload,
     })
   }
 
   const requestPasswordReset = async (payload: ForgotPasswordPayload) => {
-    return await $fetch<{ ok: boolean; message?: string; error?: string }>(`${apiBase.value}/forgot-password.php`, {
+    return await $fetch<{ ok: boolean; message?: string; error?: string }>(apiUrl('forgot-password.php'), {
       method: 'POST',
       body: payload,
     })
   }
 
   const resetPassword = async (payload: ResetPasswordPayload) => {
-    return await $fetch<{ ok: boolean; error?: string }>(`${apiBase.value}/reset-password.php`, {
+    return await $fetch<{ ok: boolean; error?: string }>(apiUrl('reset-password.php'), {
       method: 'POST',
       body: payload,
     })
   }
 
   const me = async (token: string) => {
-    return await $fetch<{ ok: boolean; user?: Record<string, unknown>; kurationDone?: boolean; error?: string }>(`${apiBase.value}/me.php`, {
+    return await $fetch<{ ok: boolean; user?: Record<string, unknown>; kurationDone?: boolean; error?: string }>(apiUrl('me.php'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -181,7 +217,7 @@ export const useAuthApi = () => {
   }
 
   const listSamples = async (token: string) => {
-    return await $fetch<{ ok: boolean; samples?: SampleItem[]; error?: string }>(`${apiBase.value}/samples.php`, {
+    return await $fetch<{ ok: boolean; samples?: SampleItem[]; error?: string }>(apiUrl('samples.php'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -189,7 +225,7 @@ export const useAuthApi = () => {
   }
 
   const saveSampleRating = async (token: string, payload: SaveRatingPayload) => {
-    return await $fetch<{ ok: boolean; ratingId?: number; error?: string }>(`${apiBase.value}/save-rating.php`, {
+    return await $fetch<{ ok: boolean; ratingId?: number; error?: string }>(apiUrl('save-rating.php'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -199,7 +235,7 @@ export const useAuthApi = () => {
   }
 
   const listAdminUsers = async (token: string) => {
-    return await $fetch<{ ok: boolean; users?: AdminUser[]; error?: string }>(`${apiBase.value}/admin-users.php`, {
+    return await $fetch<{ ok: boolean; users?: AdminUser[]; error?: string }>(apiUrl('admin-users.php'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -207,7 +243,7 @@ export const useAuthApi = () => {
   }
 
   const listAdminPerfumes = async (token: string) => {
-    return await $fetch<{ ok: boolean; perfumes?: PerfumeItem[]; error?: string }>(`${apiBase.value}/admin-list-perfumes.php`, {
+    return await $fetch<{ ok: boolean; perfumes?: PerfumeItem[]; error?: string }>(apiUrl('admin-list-perfumes.php'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -215,7 +251,7 @@ export const useAuthApi = () => {
   }
 
   const listAdminSampleSets = async (token: string) => {
-    return await $fetch<{ ok: boolean; sampleSets?: AdminSampleSet[]; error?: string }>(`${apiBase.value}/admin-list-sample-sets.php`, {
+    return await $fetch<{ ok: boolean; sampleSets?: AdminSampleSet[]; error?: string }>(apiUrl('admin-list-sample-sets.php'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -225,7 +261,7 @@ export const useAuthApi = () => {
   const deleteAdminUser = async (token: string, userId: number) => {
     const body = new FormData()
     body.append('id', String(userId))
-    return await $fetch<{ ok: boolean; error?: string }>(`${apiBase.value}/admin-delete-user.php`, {
+    return await $fetch<{ ok: boolean; error?: string }>(apiUrl('admin-delete-user.php'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -235,7 +271,7 @@ export const useAuthApi = () => {
   }
 
   const listAdminRatingAnalytics = async (token: string) => {
-    return await $fetch<{ ok: boolean; rows?: AdminRatingAnalyticsRow[]; error?: string }>(`${apiBase.value}/admin-rating-analytics.php`, {
+    return await $fetch<{ ok: boolean; rows?: AdminRatingAnalyticsRow[]; error?: string }>(apiUrl('admin-rating-analytics.php'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -243,11 +279,11 @@ export const useAuthApi = () => {
   }
 
   const listPerfumes = async () => {
-    return await $fetch<{ ok: boolean; perfumes?: PerfumeItem[]; error?: string }>(`${apiBase.value}/perfumes.php`)
+    return await $fetch<{ ok: boolean; perfumes?: PerfumeItem[]; error?: string }>(apiUrl('perfumes.php'))
   }
 
   const listSampleSets = async (token: string) => {
-    return await $fetch<{ ok: boolean; sampleSets?: SampleSetItem[]; error?: string }>(`${apiBase.value}/sample-sets.php`, {
+    return await $fetch<{ ok: boolean; sampleSets?: SampleSetItem[]; error?: string }>(apiUrl('sample-sets.php'), {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -255,7 +291,7 @@ export const useAuthApi = () => {
   }
 
   const getSampleSetDetail = async (token: string, userSampleSetId: number) => {
-    return await $fetch<{ ok: boolean; sampleSet?: Record<string, unknown>; perfumes?: SampleSetDetailPerfume[]; favoritePerfumeId?: number | null; error?: string }>(`${apiBase.value}/sample-set-detail.php`, {
+    return await $fetch<{ ok: boolean; sampleSet?: Record<string, unknown>; perfumes?: SampleSetDetailPerfume[]; favoritePerfumeId?: number | null; error?: string }>(apiUrl('sample-set-detail.php'), {
       query: {
         user_sample_set_id: userSampleSetId,
       },
@@ -266,7 +302,7 @@ export const useAuthApi = () => {
   }
 
   const savePerfumeRating = async (token: string, payload: SavePerfumeRatingPayload) => {
-    return await $fetch<{ ok: boolean; ratingId?: number; setStatus?: string; error?: string }>(`${apiBase.value}/save-perfume-rating.php`, {
+    return await $fetch<{ ok: boolean; ratingId?: number; setStatus?: string; error?: string }>(apiUrl('save-perfume-rating.php'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -275,13 +311,20 @@ export const useAuthApi = () => {
     })
   }
 
-  const assignQrSampleSet = async (token: string) => {
-    return await $fetch<{ ok: boolean; user_sample_set_id?: number; already_existed?: boolean; error?: string }>(`${apiBase.value}/qr-assign-sample-set.php`, {
+  const assignSampleStartSet = async (token: string) => {
+    const url = apiUrl('start-assign-sample-set.php')
+    console.info('[sample-start] POST URL', url)
+
+    return await $fetch<{ ok: boolean; user_sample_set_id?: number; already_existed?: boolean; error?: string }>(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
+  }
+
+  const assignQrSampleSet = async (token: string) => {
+    return await assignSampleStartSet(token)
   }
 
   return {
@@ -301,6 +344,7 @@ export const useAuthApi = () => {
     listSampleSets,
     getSampleSetDetail,
     savePerfumeRating,
+    assignSampleStartSet,
     assignQrSampleSet,
   }
 }

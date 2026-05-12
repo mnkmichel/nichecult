@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { register } = useAuthApi()
+const { register, login, me } = useAuthApi()
 const route = useRoute()
 
 const redirectTo = computed(() => {
@@ -36,9 +36,27 @@ const submit = async () => {
       return
     }
 
-    success.value = 'Registrierung erfolgreich. Du kannst dich jetzt einloggen.'
+    const loginRes = await login({
+      email: form.email,
+      password: form.password,
+    })
+
+    if (!loginRes.ok || !loginRes.token) {
+      await navigateTo(loginLink.value)
+      return
+    }
+
+    localStorage.setItem('nichecult_token', loginRes.token)
+    const meRes = await me(loginRes.token)
+    if (meRes.kurationDone) {
+      localStorage.setItem('nichecult_kuration_ever_done', '1')
+      window.dispatchEvent(new Event('nichecult:kuration-completed'))
+    }
+
+    success.value = 'Registrierung erfolgreich. Sie werden weitergeleitet...'
     form.age = null
     form.password = ''
+    await navigateTo(redirectTo.value)
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler bei der Registrierung'
   } finally {
