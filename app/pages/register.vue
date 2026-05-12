@@ -1,5 +1,15 @@
 <script setup lang="ts">
 const { register } = useAuthApi()
+const route = useRoute()
+
+const redirectTo = computed(() => {
+  const r = route.query.redirect
+  return typeof r === 'string' && r.startsWith('/') ? r : '/'
+})
+
+const loginLink = computed(() =>
+  redirectTo.value !== '/' ? `/login?redirect=${encodeURIComponent(redirectTo.value)}` : '/login'
+)
 
 const form = reactive({
   firstName: '',
@@ -58,7 +68,7 @@ const submit = async () => {
       <p v-if="error" class="mt-4 text-sm text-red-600">{{ error }}</p>
       <p v-if="success" class="mt-4 text-sm text-emerald-700">{{ success }}</p>
 
-      <NuxtLink to="/login" class="mt-5 inline-block text-sm text-stone-700 underline">Zum Login</NuxtLink>
+      <NuxtLink :to="loginLink" class="mt-5 inline-block text-sm text-stone-700 underline">Zum Login</NuxtLink>
     </div>
   </main>
 </template>

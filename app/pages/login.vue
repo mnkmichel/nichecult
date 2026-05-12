@@ -1,5 +1,11 @@
 <script setup lang="ts">
 const { login, me } = useAuthApi()
+const route = useRoute()
+
+const redirectTo = computed(() => {
+  const r = route.query.redirect
+  return typeof r === 'string' && r.startsWith('/') ? r : '/'
+})
 
 const form = reactive({
   email: '',
@@ -31,7 +37,7 @@ const submit = async () => {
       window.dispatchEvent(new Event('nichecult:kuration-completed'))
     }
 
-    await navigateTo('/')
+    await navigateTo(redirectTo.value)
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler beim Login'
   } finally {

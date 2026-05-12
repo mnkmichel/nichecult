@@ -275,6 +275,15 @@ export const useAuthApi = () => {
     })
   }
 
+  const assignQrSampleSet = async (token: string) => {
+    return await $fetch<{ ok: boolean; user_sample_set_id?: number; already_existed?: boolean; error?: string }>(`${apiBase.value}/qr-assign-sample-set.php`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  }
+
   return {
     login,
     register,
@@ -292,5 +301,6 @@ export const useAuthApi = () => {
     listSampleSets,
     getSampleSetDetail,
     savePerfumeRating,
+    assignQrSampleSet,
   }
 }
