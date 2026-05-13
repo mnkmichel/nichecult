@@ -3,7 +3,7 @@ definePageMeta({
   middleware: 'admin',
 })
 
-const { listAdminUsers, getAdminDefaultSampleSet, deleteAdminUser, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics, adminBackfillSampleSet } = useAuthApi()
+const { listAdminUsers, getAdminDefaultSampleSet, deleteAdminUser, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics, adminBackfillSampleSet, adminSetDefaultSampleSet } = useAuthApi()
 const config = useRuntimeConfig()
 const apiBase = (config.public.apiBase as string).replace(/\/$/, '')
 
@@ -12,6 +12,7 @@ const defaultSampleSet = ref<Record<string, any> | null>(null)
 const backfillLoading = ref(false)
 const backfillResult = ref<{ assigned_count: number; default_set_title: string } | null>(null)
 const backfillError = ref('')
+const settingDefaultSetId = ref<number | null>(null)
 const perfumes = ref<Array<Record<string, any>>>([])
 const sampleSets = ref<Array<Record<string, any>>>([])
 const createdPerfume = ref<Record<string, any> | null>(null)
@@ -93,6 +94,28 @@ async function handleBackfillSampleSet() {
     backfillError.value = 'Netzwerkfehler beim Backfill'
   } finally {
     backfillLoading.value = false
+  }
+}
+
+async function handleSetAsDefaultAndAssignAll(setId: number) {
+  const token = localStorage.getItem('nichecult_token') || ''
+  settingDefaultSetId.value = setId
+  error.value = ''
+  success.value = ''
+
+  try {
+    const res = await adminSetDefaultSampleSet(token, setId)
+    if (!res.ok) {
+      error.value = res.error || 'Standard-Set konnte nicht gesetzt werden'
+      return
+    }
+
+    success.value = `${res.default_set_title || 'Set'} als Standard gesetzt. ${res.assigned_count ?? 0} Nutzer wurden hinzugefügt.`
+    await loadAdminData()
+  } catch (e: any) {
+    error.value = e?.data?.details || e?.data?.error || e?.message || 'Standard-Set konnte nicht gesetzt werden'
+  } finally {
+    settingDefaultSetId.value = null
   }
 }
 
@@ -306,6 +329,47 @@ const hydrateDrafts = () => {
   }
 }
 
+const resolveDefaultSampleSetFromList = (sets: Array<Record<string, any>>) => {
+  if (!sets.length) {
+    return null
+  }
+
+  const ranked = [...sets].sort((a, b) => {
+    const normalizeTitle = (value: unknown) => String(value || '').trim().toLowerCase()
+    const scoreTitle = (title: string) => {
+      if (title === 'erstes set') return 0
+      if (title === 'erste duftselektion') return 1
+      if (title.startsWith('erstes set')) return 2
+      if (title.startsWith('erste')) return 3
+      return 9
+    }
+
+    const titleDiff = scoreTitle(normalizeTitle(a.title)) - scoreTitle(normalizeTitle(b.title))
+    if (titleDiff !== 0) return titleDiff
+
+    const statusDiff = (String(a.status || '').toLowerCase() === 'active' ? 0 : 1) - (String(b.status || '').toLowerCase() === 'active' ? 0 : 1)
+    if (statusDiff !== 0) return statusDiff
+
+    const perfumeDiff = (Number(b.perfume_count || 0) > 0 ? 0 : 1) - (Number(a.perfume_count || 0) > 0 ? 0 : 1)
+    if (perfumeDiff !== 0) return perfumeDiff
+
+    return Number(a.id || 0) - Number(b.id || 0)
+  })
+
+  const selected = ranked[0]
+  if (!selected) {
+    return null
+  }
+
+  return {
+    id: Number(selected.id),
+    title: String(selected.title || ''),
+    status: String(selected.status || ''),
+    rating_deadline_at: selected.next_rating_deadline_at ?? null,
+    resolution: 'list-fallback',
+  }
+}
+
 const loadAdminData = async () => {
   loading.value = true
   error.value = ''
@@ -330,9 +394,9 @@ const loadAdminData = async () => {
     ])
 
     users.value = usersRes.users || []
-    defaultSampleSet.value = (defaultSetRes as any)?.defaultSampleSet || null
     perfumes.value = perfumesRes.perfumes || []
     sampleSets.value = setsRes.sampleSets || []
+    defaultSampleSet.value = (defaultSetRes as any)?.defaultSampleSet || resolveDefaultSampleSetFromList(sampleSets.value)
     analyticsRows.value = analyticsRes.rows || []
     hydrateDrafts()
   } catch (e: any) {
@@ -1364,8 +1428,18 @@ onUnmounted(() => {
                   <span class="rounded-full px-3 py-1 text-xs font-semibold" :class="set.status === 'active' ? 'bg-emerald-900/50 text-emerald-200' : 'bg-stone-800 text-stone-300'">
                     {{ set.status === 'active' ? 'Aktiv' : 'Inaktiv' }}
                   </span>
+                  <span v-if="defaultSampleSet && Number(defaultSampleSet.id) === Number(set.id)" class="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-semibold text-amber-200">
+                    Standard-Set
+                  </span>
                   <button class="rounded-lg border border-stone-700 px-3 py-2 text-sm font-semibold text-stone-200 hover:bg-stone-800" @click="toggleSetEditor(set.id)">
                     {{ openSetEditorId === set.id ? 'Schließen' : 'Bearbeiten' }}
+                  </button>
+                  <button
+                    class="rounded-lg border border-amber-500 bg-amber-500/20 px-3 py-2 text-sm font-semibold text-amber-200 disabled:opacity-60"
+                    :disabled="settingDefaultSetId === set.id"
+                    @click="handleSetAsDefaultAndAssignAll(set.id)"
+                  >
+                    {{ settingDefaultSetId === set.id ? 'Setzt Standard...' : 'Als Standard + allen zuweisen' }}
                   </button>
                   <button class="rounded-lg border border-emerald-700 bg-emerald-900/40 px-3 py-2 text-sm font-semibold text-emerald-200" @click="toggleAssignUser(set.id)">
                     {{ openAssignUserId === set.id ? 'Zuweisung schließen' : '+ User hinzufügen' }}
@@ -1459,7 +1533,13 @@ onUnmounted(() => {
             <p class="font-semibold text-stone-100">Standard-Set für Auto-Zuweisung</p>
             <p v-if="defaultSampleSet" class="mt-1">
               #{{ defaultSampleSet.id }} - {{ defaultSampleSet.title }}
-              <span class="text-stone-500">(Ermittlung: {{ defaultSampleSet.resolution === 'title-match' ? 'Titel-Match' : 'Erstes aktives Set' }})</span>
+              <span class="text-stone-500">(Ermittlung: {{
+                defaultSampleSet.resolution === 'configured-default'
+                  ? 'Admin festgelegt'
+                  : defaultSampleSet.resolution === 'title-match'
+                    ? 'Titel-Match'
+                    : 'Erstes aktives Set'
+              }})</span>
             </p>
             <p v-else class="mt-1 text-red-300">Kein aktives Standard-Set gefunden oder Diagnose-Endpoint nicht erreichbar.</p>
             <div class="mt-3 flex flex-wrap items-center gap-3">

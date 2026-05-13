@@ -30,6 +30,16 @@ $userId = (int) $claims['sub'];
 
 try {
     $pdo = getPdo($config);
+
+    $existingAssignment = getLatestUserSampleSetAssignment($pdo, $userId);
+    if ($existingAssignment !== null) {
+        jsonResponse([
+            'ok' => true,
+            'user_sample_set_id' => (int) $existingAssignment['id'],
+            'already_existed' => true,
+        ]);
+    }
+
     $result = assignDefaultSetToUser($pdo, $userId);
 
     jsonResponse([

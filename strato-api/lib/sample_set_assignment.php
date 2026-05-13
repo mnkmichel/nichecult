@@ -29,6 +29,77 @@ function ensureSampleSetDeadlineColumns(PDO $pdo): void
     }
 }
 
+function ensureSampleSetSettingsTable(PDO $pdo): void
+{
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS app_settings (
+            setting_key VARCHAR(120) NOT NULL PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+}
+
+function getConfiguredDefaultSampleSetId(PDO $pdo): ?int
+{
+    ensureSampleSetSettingsTable($pdo);
+
+    $stmt = $pdo->prepare('SELECT setting_value FROM app_settings WHERE setting_key = :key LIMIT 1');
+    $stmt->execute(['key' => 'default_sample_set_id']);
+    $value = $stmt->fetchColumn();
+
+    if ($value === false) {
+        return null;
+    }
+
+    $id = (int) $value;
+    return $id > 0 ? $id : null;
+}
+
+function setConfiguredDefaultSampleSetId(PDO $pdo, int $sampleSetId): void
+{
+    ensureSampleSetSettingsTable($pdo);
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO app_settings (setting_key, setting_value)
+         VALUES (:key, :value)
+         ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)'
+    );
+    $stmt->execute([
+        'key' => 'default_sample_set_id',
+        'value' => (string) $sampleSetId,
+    ]);
+}
+
+function getSampleSetWithPerfumeCountById(PDO $pdo, int $sampleSetId): ?array
+{
+    $stmt = $pdo->prepare(
+        'SELECT ss.id, ss.title, ss.status, ss.rating_deadline_at, COALESCE(ssc.perfume_count, 0) AS perfume_count
+         FROM sample_sets ss
+         LEFT JOIN (
+            SELECT sample_set_id, COUNT(*) AS perfume_count
+            FROM sample_set_items
+            GROUP BY sample_set_id
+         ) ssc ON ssc.sample_set_id = ss.id
+         WHERE ss.id = :id
+         LIMIT 1'
+    );
+    $stmt->execute(['id' => $sampleSetId]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    return [
+        'id' => (int) $row['id'],
+        'title' => (string) $row['title'],
+        'status' => (string) $row['status'],
+        'rating_deadline_at' => $row['rating_deadline_at'] ?? null,
+        'perfume_count' => (int) ($row['perfume_count'] ?? 0),
+    ];
+}
+
 function findSampleSetById(PDO $pdo, int $sampleSetId): ?array
 {
     $stmt = $pdo->prepare('SELECT id, title, status, rating_deadline_at FROM sample_sets WHERE id = :id LIMIT 1');
@@ -83,13 +154,24 @@ function getLatestUserSampleSetAssignment(PDO $pdo, int $userId): ?array
 
 function resolveDefaultSampleSet(PDO $pdo): ?array
 {
+    $configuredId = getConfiguredDefaultSampleSetId($pdo);
+    if ($configuredId !== null) {
+        $configuredSet = getSampleSetWithPerfumeCountById($pdo, $configuredId);
+        if ($configuredSet !== null) {
+            $configuredSet['resolution'] = 'configured-default';
+            return $configuredSet;
+        }
+    }
+
     $stmt = $pdo->query(
-        'SELECT ss.id, ss.title, ss.status, ss.rating_deadline_at, COUNT(ssi.id) AS perfume_count
-         FROM sample_sets ss
-         LEFT JOIN sample_set_items ssi ON ssi.sample_set_id = ss.id
-         GROUP BY ss.id
+          'SELECT ss.id, ss.title, ss.status, ss.rating_deadline_at, COALESCE(ssc.perfume_count, 0) AS perfume_count
+            FROM sample_sets ss
+            LEFT JOIN (
+                SELECT sample_set_id, COUNT(*) AS perfume_count
+                FROM sample_set_items
+                GROUP BY sample_set_id
+            ) ssc ON ssc.sample_set_id = ss.id
          ORDER BY
-            CASE WHEN ss.status = "active" THEN 0 ELSE 1 END,
             CASE
               WHEN LOWER(TRIM(ss.title)) = "erstes set" THEN 0
               WHEN LOWER(TRIM(ss.title)) = "erste duftselektion" THEN 1
@@ -97,7 +179,8 @@ function resolveDefaultSampleSet(PDO $pdo): ?array
               WHEN LOWER(TRIM(ss.title)) LIKE "erste%" THEN 3
               ELSE 9
             END,
-            CASE WHEN COUNT(ssi.id) > 0 THEN 0 ELSE 1 END,
+                CASE WHEN ss.status = "active" THEN 0 ELSE 1 END,
+                CASE WHEN COALESCE(ssc.perfume_count, 0) > 0 THEN 0 ELSE 1 END,
             ss.id ASC
          LIMIT 1'
     );
@@ -107,12 +190,18 @@ function resolveDefaultSampleSet(PDO $pdo): ?array
         return null;
     }
 
+    $normalizedTitle = mb_strtolower(trim((string) $row['title']));
+    $resolution = ($normalizedTitle === 'erstes set' || $normalizedTitle === 'erste duftselektion' || str_starts_with($normalizedTitle, 'erstes set') || str_starts_with($normalizedTitle, 'erste'))
+        ? 'title-match'
+        : 'first-active';
+
     return [
         'id' => (int) $row['id'],
         'title' => (string) $row['title'],
         'status' => (string) $row['status'],
         'rating_deadline_at' => $row['rating_deadline_at'] ?? null,
         'perfume_count' => (int) ($row['perfume_count'] ?? 0),
+        'resolution' => $resolution,
     ];
 }
 
@@ -190,18 +279,18 @@ function assignDefaultSetToUser(PDO $pdo, int $userId): array
     ensureSampleSetDeadlineColumns($pdo);
     ensureUserExists($pdo, $userId);
 
-    $existingAssignment = getLatestUserSampleSetAssignment($pdo, $userId);
+    $sampleSet = resolveDefaultSampleSet($pdo);
+    if ($sampleSet === null) {
+        throw new RuntimeException('No active sample set configured for auto-assignment.');
+    }
+
+    $existingAssignment = getUserSampleSetAssignment($pdo, $userId, (int) $sampleSet['id']);
     if ($existingAssignment !== null) {
         return [
             'user_sample_set_id' => (int) $existingAssignment['id'],
             'sample_set_id' => (int) $existingAssignment['sample_set_id'],
             'already_existed' => true,
         ];
-    }
-
-    $sampleSet = resolveDefaultSampleSet($pdo);
-    if ($sampleSet === null) {
-        throw new RuntimeException('No active sample set configured for auto-assignment.');
     }
 
     $userSampleSetId = assignUserToSampleSet(

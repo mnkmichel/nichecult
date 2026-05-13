@@ -26,15 +26,20 @@ if (!$claims || empty($claims['admin'])) {
     jsonResponse(['ok' => false, 'error' => 'Admin access required'], 403);
 }
 
+$sampleSetId = (int) ($_POST['sample_set_id'] ?? 0);
+if ($sampleSetId <= 0) {
+    jsonResponse(['ok' => false, 'error' => 'Invalid sample_set_id'], 400);
+}
+
 try {
     $pdo = getPdo($config);
 
-    $defaultSet = resolveDefaultSampleSet($pdo);
-    if ($defaultSet === null) {
-        jsonResponse(['ok' => false, 'error' => 'No active sample set available'], 404);
+    $sampleSet = getSampleSetWithPerfumeCountById($pdo, $sampleSetId);
+    if ($sampleSet === null) {
+        jsonResponse(['ok' => false, 'error' => 'Sample set not found'], 404);
     }
 
-    $defaultSampleSetId = (int) $defaultSet['id'];
+    setConfiguredDefaultSampleSetId($pdo, $sampleSetId);
 
     $stmt = $pdo->prepare(
         'SELECT u.id
@@ -45,28 +50,26 @@ try {
          WHERE uss.id IS NULL
          ORDER BY u.id ASC'
     );
-    $stmt->execute(['sample_set_id' => $defaultSampleSetId]);
+    $stmt->execute(['sample_set_id' => $sampleSetId]);
     $userIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
 
     $assignedCount = 0;
+    $ratingDeadlineAt = $sampleSet['rating_deadline_at'] ?? null;
     foreach ($userIds as $userId) {
-        $result = assignDefaultSetToUser($pdo, $userId);
-        if (empty($result['already_existed'])) {
-            $assignedCount++;
-        }
+        assignUserToSampleSet($pdo, $userId, $sampleSetId, 'delivered', $ratingDeadlineAt);
+        $assignedCount++;
     }
 
     jsonResponse([
         'ok' => true,
+        'default_set_id' => $sampleSetId,
+        'default_set_title' => (string) $sampleSet['title'],
         'assigned_count' => $assignedCount,
-        'skipped_count' => 0,
-        'default_set_id' => $defaultSampleSetId,
-        'default_set_title' => (string) $defaultSet['title'],
     ]);
 } catch (Throwable $e) {
     jsonResponse([
         'ok' => false,
-        'error' => 'Default set backfill failed',
+        'error' => 'Set default assignment failed',
         'details' => $e->getMessage(),
     ], 500);
 }

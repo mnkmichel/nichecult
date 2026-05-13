@@ -50,7 +50,7 @@ type AdminDefaultSampleSet = {
   title: string
   status: string
   rating_deadline_at?: string | null
-  resolution: 'title-match' | 'first-active'
+  resolution: 'title-match' | 'first-active' | 'configured-default' | 'list-fallback' | 'shared-resolver'
 }
 
 type PerfumeItem = {
@@ -353,6 +353,19 @@ export const useAuthApi = () => {
     })
   }
 
+  const adminSetDefaultSampleSet = async (token: string, sampleSetId: number) => {
+    const body = new FormData()
+    body.append('sample_set_id', String(sampleSetId))
+
+    return await $fetch<{ ok: boolean; assigned_count?: number; default_set_id?: number; default_set_title?: string; error?: string }>(apiUrl('admin-set-default-sample-set.php'), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body,
+    })
+  }
+
   return {
     login,
     register,
@@ -374,5 +387,6 @@ export const useAuthApi = () => {
     assignSampleStartSet,
     assignQrSampleSet,
     adminBackfillSampleSet,
+    adminSetDefaultSampleSet,
   }
 }

@@ -45,7 +45,7 @@ try {
             'title' => (string) $setRow['title'],
             'status' => (string) $setRow['status'],
             'rating_deadline_at' => $setRow['rating_deadline_at'] ?? null,
-            'resolution' => 'shared-resolver',
+            'resolution' => (string) ($setRow['resolution'] ?? 'shared-resolver'),
         ],
     ]);
 } catch (Throwable $e) {
