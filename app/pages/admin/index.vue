@@ -844,7 +844,13 @@ const filteredUsers = computed(() => {
 
 const userAssignedSets = (user: Record<string, any>) => {
   const raw = String(user.assigned_sets_summary || '').trim()
-  if (!raw) return []
+  if (!raw) {
+    const count = Number(user.sample_count || 0)
+    if (count > 0) {
+      return [`${count} Set${count === 1 ? '' : 's'} zugewiesen`]
+    }
+    return []
+  }
   return raw.split('||').map((entry) => entry.trim()).filter(Boolean)
 }
 
