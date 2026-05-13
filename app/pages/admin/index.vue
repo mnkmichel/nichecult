@@ -3,12 +3,15 @@ definePageMeta({
   middleware: 'admin',
 })
 
-const { listAdminUsers, getAdminDefaultSampleSet, deleteAdminUser, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics } = useAuthApi()
+const { listAdminUsers, getAdminDefaultSampleSet, deleteAdminUser, listAdminPerfumes, listAdminSampleSets, listAdminRatingAnalytics, adminBackfillSampleSet } = useAuthApi()
 const config = useRuntimeConfig()
 const apiBase = (config.public.apiBase as string).replace(/\/$/, '')
 
 const users = ref<Array<Record<string, any>>>([])
 const defaultSampleSet = ref<Record<string, any> | null>(null)
+const backfillLoading = ref(false)
+const backfillResult = ref<{ assigned_count: number; default_set_title: string } | null>(null)
+const backfillError = ref('')
 const perfumes = ref<Array<Record<string, any>>>([])
 const sampleSets = ref<Array<Record<string, any>>>([])
 const createdPerfume = ref<Record<string, any> | null>(null)
@@ -49,7 +52,7 @@ const deleteUserError = ref('')
 
 async function handleDeleteUser(userId: number, userEmail: string) {
   if (!confirm(`Nutzer "${userEmail}" wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) return
-  const token = localStorage.getItem('auth_token') || ''
+  const token = localStorage.getItem('nichecult_token') || ''
   deletingUserId.value = userId
   deleteUserError.value = ''
   try {
@@ -63,6 +66,33 @@ async function handleDeleteUser(userId: number, userEmail: string) {
     deleteUserError.value = 'Netzwerkfehler beim Löschen'
   } finally {
     deletingUserId.value = null
+  }
+}
+
+async function handleBackfillSampleSet() {
+  const token = localStorage.getItem('nichecult_token') || ''
+  backfillLoading.value = true
+  backfillResult.value = null
+  backfillError.value = ''
+  try {
+    const res = await adminBackfillSampleSet(token)
+    if (!res.ok) {
+      backfillError.value = res.error || 'Backfill fehlgeschlagen'
+    } else {
+      backfillResult.value = {
+        assigned_count: res.assigned_count ?? 0,
+        default_set_title: res.default_set_title ?? '',
+      }
+      // Reload users to show updated assignments
+      const usersRes = await listAdminUsers(token)
+      if (usersRes.ok && usersRes.users) {
+        users.value = usersRes.users
+      }
+    }
+  } catch {
+    backfillError.value = 'Netzwerkfehler beim Backfill'
+  } finally {
+    backfillLoading.value = false
   }
 }
 
@@ -1432,6 +1462,19 @@ onUnmounted(() => {
               <span class="text-stone-500">(Ermittlung: {{ defaultSampleSet.resolution === 'title-match' ? 'Titel-Match' : 'Erstes aktives Set' }})</span>
             </p>
             <p v-else class="mt-1 text-red-300">Kein aktives Standard-Set gefunden oder Diagnose-Endpoint nicht erreichbar.</p>
+            <div class="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                :disabled="backfillLoading || !defaultSampleSet"
+                class="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+                @click="handleBackfillSampleSet"
+              >
+                {{ backfillLoading ? 'Wird zugewiesen…' : 'Alle Nutzer ohne Set zuweisen' }}
+              </button>
+              <span v-if="backfillResult" class="text-emerald-400 text-sm font-medium">
+                ✓ {{ backfillResult.assigned_count }} Nutzer dem Set „{{ backfillResult.default_set_title }}" zugewiesen
+              </span>
+              <span v-if="backfillError" class="text-red-400 text-sm">{{ backfillError }}</span>
+            </div>
           </div>
 
           <div class="mt-4 grid gap-3 md:grid-cols-[1fr_240px]">

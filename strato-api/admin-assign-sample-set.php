@@ -7,6 +7,7 @@ $config = require __DIR__ . '/config.php';
 require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/jwt.php';
+require __DIR__ . '/lib/sample_set_assignment.php';
 
 setCorsHeaders($config);
 handlePreflightAndExit();
@@ -56,61 +57,16 @@ if (!in_array($status, ['assigned', 'delivered', 'completed'], true)) {
 
 try {
     $pdo = getPdo($config);
-
-    $hasColumn = static function (PDO $pdo, string $table, string $column): bool {
-        $stmt = $pdo->prepare(
-            'SELECT COUNT(*) FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME = :table_name
-               AND COLUMN_NAME = :column_name'
-        );
-        $stmt->execute([
-            'table_name' => $table,
-            'column_name' => $column,
-        ]);
-
-        return (int) $stmt->fetchColumn() > 0;
-    };
-
-    if (!$hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at')) {
-        $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
-    }
-
-    if (!$hasColumn($pdo, 'sample_sets', 'rating_deadline_at')) {
-        $pdo->exec('ALTER TABLE sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER image_path');
-    }
-
-    $checkSet = $pdo->prepare('SELECT id, rating_deadline_at FROM sample_sets WHERE id = :id LIMIT 1');
-    $checkSet->execute(['id' => $sampleSetId]);
-    $setRow = $checkSet->fetch();
-    if (!$setRow) {
-        jsonResponse(['ok' => false, 'error' => 'Sample set not found'], 404);
-    }
-
     if (!$hasDeadlineInput) {
+        $setRow = findSampleSetById($pdo, $sampleSetId);
+        if ($setRow === null) {
+            jsonResponse(['ok' => false, 'error' => 'Sample set not found'], 404);
+        }
+
         $ratingDeadlineAt = $setRow['rating_deadline_at'] ?? null;
     }
 
-    $checkUser = $pdo->prepare('SELECT id FROM users WHERE id = :id LIMIT 1');
-    $checkUser->execute(['id' => $userId]);
-    if (!$checkUser->fetch()) {
-        jsonResponse(['ok' => false, 'error' => 'User not found'], 404);
-    }
-
-    $stmt = $pdo->prepare(
-                'INSERT INTO user_sample_sets (user_id, sample_set_id, set_status, rating_deadline_at)
-                 VALUES (:user_id, :sample_set_id, :set_status, :rating_deadline_at)
-         ON DUPLICATE KEY UPDATE
-           set_status = VALUES(set_status),
-                     rating_deadline_at = VALUES(rating_deadline_at),
-           completed_at = CASE WHEN VALUES(set_status) = "completed" THEN CURRENT_TIMESTAMP ELSE NULL END'
-    );
-    $stmt->execute([
-        'user_id' => $userId,
-        'sample_set_id' => $sampleSetId,
-        'set_status' => $status,
-                'rating_deadline_at' => $ratingDeadlineAt,
-    ]);
+    assignUserToSampleSet($pdo, $userId, $sampleSetId, $status, $ratingDeadlineAt);
 
     jsonResponse([
         'ok' => true,
@@ -122,9 +78,12 @@ try {
         ],
     ]);
 } catch (Throwable $e) {
+    $statusCode = in_array($e->getMessage(), ['User not found', 'Sample set not found'], true) ? 404 : 500;
     jsonResponse([
         'ok' => false,
-        'error' => 'Sample set assignment failed',
+        'error' => $e->getMessage() === 'User not found' || $e->getMessage() === 'Sample set not found'
+            ? $e->getMessage()
+            : 'Sample set assignment failed',
         'details' => $e->getMessage(),
-    ], 500);
+    ], $statusCode);
 }

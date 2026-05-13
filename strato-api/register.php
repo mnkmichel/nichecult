@@ -60,20 +60,7 @@ try {
 
     $newUserId = (int) $pdo->lastInsertId();
 
-    ensureSampleSetDeadlineColumns($pdo);
-
-    $sampleSet = resolveDefaultSampleSet($pdo);
-    if ($sampleSet === null) {
-        throw new RuntimeException('No active sample set configured for auto-assignment.');
-    }
-
-    assignUserToSampleSet(
-        $pdo,
-        $newUserId,
-        (int) $sampleSet['id'],
-        'delivered',
-        $sampleSet['rating_deadline_at'] ?? null
-    );
+    assignDefaultSetToUser($pdo, $newUserId);
 
     $pdo->commit();
 

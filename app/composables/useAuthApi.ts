@@ -344,6 +344,15 @@ export const useAuthApi = () => {
     return await assignSampleStartSet(token)
   }
 
+  const adminBackfillSampleSet = async (token: string) => {
+    return await $fetch<{ ok: boolean; assigned_count?: number; skipped_count?: number; default_set_id?: number; default_set_title?: string; errors?: string[]; error?: string }>(apiUrl('admin-backfill-sample-set.php'), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+  }
+
   return {
     login,
     register,
@@ -364,5 +373,6 @@ export const useAuthApi = () => {
     savePerfumeRating,
     assignSampleStartSet,
     assignQrSampleSet,
+    adminBackfillSampleSet,
   }
 }

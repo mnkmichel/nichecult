@@ -30,53 +30,20 @@ $userId = (int) $claims['sub'];
 
 try {
     $pdo = getPdo($config);
-    ensureSampleSetDeadlineColumns($pdo);
-
-    $checkUser = $pdo->prepare('SELECT id FROM users WHERE id = :id LIMIT 1');
-    $checkUser->execute(['id' => $userId]);
-    if (!$checkUser->fetch()) {
-        jsonResponse(['ok' => false, 'error' => 'User not found'], 404);
-    }
-
-    $checkAnyAssignment = $pdo->prepare(
-        'SELECT id
-         FROM user_sample_sets
-         WHERE user_id = :user_id
-         ORDER BY assigned_at DESC, id DESC
-         LIMIT 1'
-    );
-    $checkAnyAssignment->execute(['user_id' => $userId]);
-    $existingAssignment = $checkAnyAssignment->fetch();
-    if ($existingAssignment) {
-        jsonResponse([
-            'ok' => true,
-            'user_sample_set_id' => (int) $existingAssignment['id'],
-            'already_existed' => true,
-        ]);
-    }
-
-    $setRow = resolveDefaultSampleSet($pdo);
-    if (!$setRow) {
-        jsonResponse(['ok' => false, 'error' => 'No active sample set available'], 404);
-    }
-
-    $userSampleSetId = assignUserToSampleSet(
-        $pdo,
-        $userId,
-        (int) $setRow['id'],
-        'delivered',
-        $setRow['rating_deadline_at'] ?? null
-    );
+    $result = assignDefaultSetToUser($pdo, $userId);
 
     jsonResponse([
         'ok' => true,
-        'user_sample_set_id' => $userSampleSetId,
-        'already_existed' => false,
+        'user_sample_set_id' => (int) $result['user_sample_set_id'],
+        'already_existed' => (bool) $result['already_existed'],
     ]);
 } catch (Throwable $e) {
+    $statusCode = $e->getMessage() === 'User not found' ? 404 : 500;
     jsonResponse([
         'ok' => false,
-        'error' => 'Sample set assignment failed',
+        'error' => $e->getMessage() === 'User not found'
+            ? 'User not found'
+            : 'Sample set assignment failed',
         'details' => $e->getMessage(),
-    ], 500);
+    ], $statusCode);
 }
