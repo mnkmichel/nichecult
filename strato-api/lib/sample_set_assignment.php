@@ -152,10 +152,35 @@ function getLatestUserSampleSetAssignment(PDO $pdo, int $userId): ?array
     ];
 }
 
+function getLatestValidUserSampleSetAssignment(PDO $pdo, int $userId): ?array
+{
+    $stmt = $pdo->prepare(
+        'SELECT uss.id, uss.sample_set_id, uss.set_status, uss.rating_deadline_at
+         FROM user_sample_sets uss
+         INNER JOIN sample_sets ss ON ss.id = uss.sample_set_id
+         WHERE uss.user_id = :user_id
+         ORDER BY uss.assigned_at DESC, uss.id DESC
+         LIMIT 1'
+    );
+    $stmt->execute(['user_id' => $userId]);
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    return [
+        'id' => (int) $row['id'],
+        'sample_set_id' => (int) $row['sample_set_id'],
+        'set_status' => (string) $row['set_status'],
+        'rating_deadline_at' => $row['rating_deadline_at'] ?? null,
+    ];
+}
+
 function resolveDefaultSampleSet(PDO $pdo): ?array
 {
     $configuredId = getConfiguredDefaultSampleSetId($pdo);
-    if ($configuredId !== null) {
+    if ($configuredId !== null) { // prefer admin-configured default when available
         $configuredSet = getSampleSetWithPerfumeCountById($pdo, $configuredId);
         if ($configuredSet !== null) {
             $configuredSet['resolution'] = 'configured-default';

@@ -60,7 +60,7 @@ try {
 
     $newUserId = (int) $pdo->lastInsertId();
 
-    assignDefaultSetToUser($pdo, $newUserId);
+    assignDefaultSetToUser($pdo, $newUserId); // default set is assigned immediately after signup
 
     $pdo->commit();
 

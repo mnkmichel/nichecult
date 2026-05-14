@@ -29,7 +29,7 @@ if (!$claims || empty($claims['admin'])) {
 try {
     $pdo = getPdo($config);
 
-    $setRow = resolveDefaultSampleSet($pdo);
+    $setRow = resolveDefaultSampleSet($pdo); // same resolver used for signup and sample-start
 
     if (!$setRow) {
         jsonResponse([
