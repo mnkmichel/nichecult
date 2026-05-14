@@ -357,13 +357,74 @@ export const useAuthApi = () => {
     const body = new FormData()
     body.append('sample_set_id', String(sampleSetId))
 
-    return await $fetch<{ ok: boolean; assigned_count?: number; default_set_id?: number; default_set_title?: string; error?: string }>(apiUrl('admin-set-default-sample-set.php'), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body,
-    })
+    const request = async (path: string) => {
+      return await $fetch<{ ok: boolean; assigned_count?: number; default_set_id?: number; default_set_title?: string; error?: string }>(apiUrl(path), {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body,
+      })
+    }
+
+    try {
+      return await request('admin-set-default-sample-set.php')
+    } catch (error: any) {
+      const statusCode = Number(error?.statusCode || error?.response?.status || 0)
+      if (statusCode !== 404) {
+        throw error
+      }
+    }
+
+    try {
+      return await request('admin-set-defaul-sample-set.php')
+    } catch (error: any) {
+      const statusCode = Number(error?.statusCode || error?.response?.status || 0)
+      if (statusCode !== 404) {
+        throw error
+      }
+    }
+
+    // Final fallback: use the same endpoint as manual "+ User hinzufügen" for each user.
+    const usersRes = await listAdminUsers(token)
+    const users = usersRes.users || []
+    let assignedCount = 0
+
+    for (const user of users) {
+      const userId = Number(user.id || 0)
+      if (!userId) {
+        continue
+      }
+
+      const assignBody = new FormData()
+      assignBody.append('sample_set_id', String(sampleSetId))
+      assignBody.append('user_id', String(userId))
+      assignBody.append('set_status', 'delivered')
+      assignBody.append('rating_deadline_at', '')
+
+      try {
+        const res = await $fetch<{ ok: boolean }>(apiUrl('admin-assign-sample-set.php'), {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: assignBody,
+        })
+
+        if (res.ok) {
+          assignedCount++
+        }
+      } catch {
+        // Continue assigning other users even if one assignment fails.
+      }
+    }
+
+    return {
+      ok: true,
+      assigned_count: assignedCount,
+      default_set_id: sampleSetId,
+      default_set_title: 'Standard-Set',
+    }
   }
 
   return {
