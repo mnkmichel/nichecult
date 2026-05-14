@@ -38,6 +38,10 @@ if ($age === false) {
 try {
     $pdo = getPdo($config);
 
+    // Run schema safety checks before opening a transaction.
+    // ALTER TABLE can trigger implicit commits in MySQL.
+    ensureSampleSetDeadlineColumns($pdo);
+
     $check = $pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
     $check->execute(['email' => $email]);
 
@@ -62,7 +66,9 @@ try {
 
     assignDefaultSetToUser($pdo, $newUserId); // default set is assigned immediately after signup
 
-    $pdo->commit();
+    if ($pdo->inTransaction()) {
+        $pdo->commit();
+    }
 
     jsonResponse([
         'ok' => true,
