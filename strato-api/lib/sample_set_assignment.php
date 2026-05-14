@@ -20,6 +20,11 @@ function sampleSetHasColumn(PDO $pdo, string $table, string $column): bool
 
 function ensureSampleSetDeadlineColumns(PDO $pdo): void
 {
+    // Avoid running DDL inside transactions because MySQL may do implicit commits.
+    if ($pdo->inTransaction()) {
+        return;
+    }
+
     if (!sampleSetHasColumn($pdo, 'user_sample_sets', 'rating_deadline_at')) {
         $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN rating_deadline_at DATETIME NULL AFTER assigned_at');
     }
