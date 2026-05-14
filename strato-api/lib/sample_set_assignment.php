@@ -281,7 +281,7 @@ function assignDefaultSetToUser(PDO $pdo, int $userId): array
 
     $sampleSet = resolveDefaultSampleSet($pdo);
     if ($sampleSet === null) {
-        throw new RuntimeException('No active sample set configured for auto-assignment.');
+        throw new RuntimeException('No default sample set configured for auto-assignment.');
     }
 
     $existingAssignment = getUserSampleSetAssignment($pdo, $userId, (int) $sampleSet['id']);

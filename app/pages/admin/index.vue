@@ -1445,7 +1445,7 @@ onUnmounted(() => {
                     :disabled="settingDefaultSetId === set.id"
                     @click="handleSetAsDefaultAndAssignAll(set.id)"
                   >
-                    {{ settingDefaultSetId === set.id ? 'Setzt Standard...' : 'Als Standard + allen zuweisen' }}
+                    {{ settingDefaultSetId === set.id ? 'Setzt Standard...' : 'Als Standard setzen + allen zuweisen' }}
                   </button>
                   <button class="rounded-lg border border-emerald-700 bg-emerald-900/40 px-3 py-2 text-sm font-semibold text-emerald-200" @click="toggleAssignUser(set.id)">
                     {{ openAssignUserId === set.id ? 'Zuweisung schließen' : '+ User hinzufügen' }}
@@ -1539,7 +1539,7 @@ onUnmounted(() => {
             <p class="font-semibold text-stone-100">Standard-Set für Auto-Zuweisung</p>
             <p v-if="defaultSampleSet" class="mt-1">
               #{{ defaultSampleSet.id }} - {{ defaultSampleSet.title }}
-              <span class="text-stone-500">(Ermittlung: {{
+              <span class="text-stone-500">(Erkennung: {{
                 defaultSampleSet.resolution === 'configured-default'
                   ? 'Admin festgelegt'
                   : defaultSampleSet.resolution === 'title-match'

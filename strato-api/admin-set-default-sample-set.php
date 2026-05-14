@@ -69,7 +69,7 @@ try {
 } catch (Throwable $e) {
     jsonResponse([
         'ok' => false,
-        'error' => 'Set default assignment failed',
+        'error' => 'Default set assignment failed',
         'details' => $e->getMessage(),
     ], 500);
 }
