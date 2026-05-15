@@ -408,10 +408,10 @@ onMounted(() => {
                 <p v-if="currentSlideQuestions.length > 1" class="mb-2 text-[1.05rem] font-medium leading-snug text-[#1a1612] md:text-[1.2rem]" style="font-family: Georgia, serif;">
                   {{ q.title }}
                 </p>
-                <div class="relative flex justify-between text-base font-medium md:text-lg">
-                  <span>{{ (q as any).leftLabel }}</span>
-                  <span class="absolute left-1/2 -translate-x-1/2">{{ (q as any).centerLabel }}</span>
-                  <span>{{ (q as any).rightLabel }}</span>
+                <div class="relative flex justify-between text-[11px] font-medium leading-tight sm:text-xs md:text-lg">
+                  <span class="max-w-[34%] text-left">{{ (q as any).leftLabel }}</span>
+                  <span class="absolute left-1/2 max-w-[40%] -translate-x-1/2 text-center">{{ (q as any).centerLabel }}</span>
+                  <span class="max-w-[34%] text-right">{{ (q as any).rightLabel }}</span>
                 </div>
                 <div class="relative mt-5 flex items-center">
                   <div class="absolute left-0 right-0 h-px bg-[#b99a57]"></div>
