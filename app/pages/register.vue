@@ -17,7 +17,11 @@ const form = reactive({
   age: null as number | null,
   email: '',
   password: '',
+  privacyAccepted: false,
+  contactConsent: false,
 })
+
+const privacyVersion = '2026-05-15'
 
 const loading = ref(false)
 const error = ref('')
@@ -29,7 +33,15 @@ const submit = async () => {
   loading.value = true
 
   try {
-    const res = await register(form)
+    if (!form.privacyAccepted) {
+      error.value = 'Bitte bestätige die Datenschutzerklärung, um fortzufahren.'
+      return
+    }
+
+    const res = await register({
+      ...form,
+      privacyVersion,
+    })
 
     if (!res.ok) {
       error.value = res.error || 'Registrierung fehlgeschlagen'
@@ -56,6 +68,8 @@ const submit = async () => {
     success.value = 'Registrierung erfolgreich. Sie werden weitergeleitet...'
     form.age = null
     form.password = ''
+    form.privacyAccepted = false
+    form.contactConsent = false
     await navigateTo(redirectTo.value)
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler bei der Registrierung'
@@ -77,6 +91,24 @@ const submit = async () => {
         <input v-model.number="form.age" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="number" min="12" max="120" placeholder="Alter" required />
         <input v-model="form.email" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="email" placeholder="E-Mail" required />
         <input v-model="form.password" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="password" placeholder="Passwort (min. 8 Zeichen)" required />
+
+        <label class="flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700">
+          <input v-model="form.privacyAccepted" type="checkbox" class="mt-0.5 h-4 w-4" />
+          <span>
+            Ich habe die
+            <NuxtLink to="/datenschutz" class="font-semibold underline">
+              Datenschutzerklärung
+            </NuxtLink>
+            gelesen und willige ein, dass meine Angaben zur Durchführung des Prototypentests, zur Zusammenstellung meiner Parfumproben und zur Auswertung im Rahmen der Masterarbeit verarbeitet werden.
+          </span>
+        </label>
+
+        <label class="flex items-start gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-3 text-sm text-stone-700">
+          <input v-model="form.contactConsent" type="checkbox" class="mt-0.5 h-4 w-4" />
+          <span>
+            Ich bin damit einverstanden, dass Lorenz Fellerer mich per E-Mail bei Rückfragen zum Test oder zur weiteren Teilnahme im Rahmen der Masterarbeit kontaktieren darf.
+          </span>
+        </label>
 
         <button :disabled="loading" class="w-full rounded-lg bg-stone-900 px-4 py-2 font-semibold text-white disabled:opacity-60">
           {{ loading ? 'Speichern...' : 'Registrieren' }}

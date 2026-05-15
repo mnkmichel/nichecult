@@ -9,6 +9,9 @@ type RegisterPayload = {
   firstName?: string
   lastName?: string
   age: number
+  privacyAccepted: boolean
+  privacyVersion: string
+  contactConsent: boolean
 }
 
 type ForgotPasswordPayload = {
