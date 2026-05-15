@@ -6,7 +6,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { getSampleSetDetail, savePerfumeRating } = useAuthApi()
+const { getSampleSetDetail, savePerfumeRating, selectFavoriteSample } = useAuthApi()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -21,6 +21,8 @@ const currentPerfumeIdx = ref(0)
 const currentQuestion = ref(0) // 0..slideConfig-1 = questions, slideConfig.length = thank-you per perfume
 const showOverview = ref(true)
 const activeDuftInfo = ref<string | null>(null)
+const showTieQuestion = ref(false)
+const tieQuestionPerfumes = ref<Array<Record<string, any>>>([])
 
 const currentQuestionStepLabel = computed(() => `${Math.min(currentQuestion.value + 1, slideConfig.length)} von ${slideConfig.length}`)
 const currentQuestionPercentage = computed(() => Math.round(Math.min(((currentQuestion.value + 1) / slideConfig.length) * 100, 100)))
@@ -50,7 +52,6 @@ const answers = reactive<Record<number, Record<string, string | number | string[
 const userSampleSetId = computed(() => Number(route.params.userSampleSetId || 0))
 const currentPerfume = computed(() => perfumes.value[currentPerfumeIdx.value])
 const hasPerfumes = computed(() => perfumes.value.length > 0)
-const tieFavoriteStorageKey = computed(() => `nichecult_tie_favorite_set_${userSampleSetId.value}`)
 const ratedPerfumeCount = computed(() => perfumes.value.filter(perfume => isRated(perfume)).length)
 const ratedPerfumeProgressLabel = computed(() => `${ratedPerfumeCount.value} von ${perfumes.value.length} wurden bewertet`)
 
@@ -97,11 +98,7 @@ const getFavoritePerfumeId = (items: Array<Record<string, any>>) => {
       continue
     }
 
-    const score = (
-      Number(perfume.overall_score || 0)
-      + Number(perfume.longevity_score || 0)
-      + Number(perfume.sillage_score || 0)
-    ) / 3
+    const score = Number(perfume.overall_score || 0)
 
     if (score > bestScore) {
       bestScore = score
@@ -114,24 +111,20 @@ const getFavoritePerfumeId = (items: Array<Record<string, any>>) => {
 
 const isFavorite = (perfume: Record<string, any>) => Number(perfume?.perfume_id) === favoritePerfumeId.value
 
-const topTiePerfumes = computed(() => {
-  const rated = perfumes.value
-    .map((perfume) => ({ perfume, score: perfumeAvgScore(perfume) }))
-    .filter((entry): entry is { perfume: Record<string, any>; score: number } => entry.score != null)
+const getTopTiePerfumesByOverall = (items: Array<Record<string, any>>) => {
+  const rated = items
+    .filter((perfume) => perfume?.overall_score != null)
+    .map((perfume) => ({ perfume, score: Number(perfume.overall_score) }))
 
   if (rated.length < 2) {
     return []
   }
 
-  const bestScore = Math.max(...rated.map(entry => entry.score))
-  const epsilon = 0.0001
-
+  const bestScore = Math.max(...rated.map((entry) => entry.score))
   return rated
-    .filter(entry => Math.abs(entry.score - bestScore) < epsilon)
-    .map(entry => entry.perfume)
-})
-
-const showTieQuestion = computed(() => topTiePerfumes.value.length >= 2)
+    .filter((entry) => entry.score === bestScore)
+    .map((entry) => entry.perfume)
+}
 
 const parseApiDate = (value: unknown) => {
   const raw = String(value || '').trim()
@@ -181,9 +174,31 @@ const deadlineCountdown = computed(() => {
   return `Noch ${hours}Std ${minutes}Min ${seconds}Sek`
 })
 
-const selectTieFavorite = (perfumeId: number) => {
-  favoritePerfumeId.value = perfumeId
-  localStorage.setItem(tieFavoriteStorageKey.value, String(perfumeId))
+const saveTieBreakerSelection = async (perfumeId: number) => {
+  saving.value = true
+  error.value = ''
+
+  try {
+    const token = localStorage.getItem('nichecult_token')
+    if (!token) {
+      await navigateTo('/login')
+      return
+    }
+
+    const response = await selectFavoriteSample(token, userSampleSetId.value, perfumeId)
+    if (!response.ok) {
+      error.value = response.error || 'Favorit konnte nicht gespeichert werden'
+      return
+    }
+
+    favoritePerfumeId.value = response.favorite_id ?? perfumeId
+    showTieQuestion.value = false
+    tieQuestionPerfumes.value = []
+  } catch (e: any) {
+    error.value = e?.data?.error || e?.message || 'Favorit konnte nicht gespeichert werden'
+  } finally {
+    saving.value = false
+  }
 }
 
 const statusHeading = (perfume: Record<string, any>) => {
@@ -487,12 +502,11 @@ const loadData = async () => {
     const res = await getSampleSetDetail(token, userSampleSetId.value)
     sampleSet.value = res.sampleSet || null
     perfumes.value = res.perfumes || []
-    favoritePerfumeId.value = res.favoritePerfumeId ?? getFavoritePerfumeId(perfumes.value)
+    favoritePerfumeId.value = res.favoritePerfumeId ?? null
 
-    const savedTieFavoriteId = Number(localStorage.getItem(tieFavoriteStorageKey.value) || 0)
-    if (savedTieFavoriteId > 0 && perfumes.value.some(p => Number(p.perfume_id) === savedTieFavoriteId)) {
-      favoritePerfumeId.value = savedTieFavoriteId
-    }
+    const tiePerfumes = getTopTiePerfumesByOverall(perfumes.value)
+    tieQuestionPerfumes.value = tiePerfumes
+    showTieQuestion.value = tiePerfumes.length > 1 && !favoritePerfumeId.value
 
     for (const p of perfumes.value) ensureAnswers(p.perfume_id)
   } catch (e: any) {
@@ -566,7 +580,7 @@ const goNext = async () => {
     }
     
     const overallScore = (Number(a.overallMatch) + 1) * 2 // 2,4,6,8,10
-    await savePerfumeRating(token, {
+    const response = await savePerfumeRating(token, {
       userSampleSetId: userSampleSetId.value,
       perfumeId: perfume.perfume_id,
       overallScore,
@@ -578,7 +592,39 @@ const goNext = async () => {
     perfume.overall_score = overallScore
     perfume.longevity_score = overallScore
     perfume.sillage_score = overallScore
-    favoritePerfumeId.value = getFavoritePerfumeId(perfumes.value)
+
+    // Determine favorite state from backend if available, otherwise compute locally
+    const favorite = response.favorite
+    if (favorite?.auto_favorite && favorite.favorite_id) {
+      // Backend: single clear winner
+      favoritePerfumeId.value = favorite.favorite_id
+      showTieQuestion.value = false
+      tieQuestionPerfumes.value = []
+    } else if (favorite?.needs_question && (favorite.tied_samples ?? []).length > 1) {
+      // Backend: tie detected
+      tieQuestionPerfumes.value = perfumes.value.filter((p) => (favorite.tied_samples ?? []).includes(Number(p.perfume_id)))
+      favoritePerfumeId.value = null
+      showTieQuestion.value = true
+      showOverview.value = true
+      saving.value = false
+      return
+    } else {
+      // Frontend fallback: compute ties locally from updated scores
+      const tiedLocally = getTopTiePerfumesByOverall(perfumes.value)
+      if (tiedLocally.length > 1) {
+        tieQuestionPerfumes.value = tiedLocally
+        favoritePerfumeId.value = null
+        showTieQuestion.value = true
+        showOverview.value = true
+        saving.value = false
+        return
+      }
+      // Single winner
+      favoritePerfumeId.value = favorite?.favorite_id ?? getFavoritePerfumeId(perfumes.value)
+      showTieQuestion.value = false
+      tieQuestionPerfumes.value = []
+    }
+
     currentQuestion.value = slideConfig.length // thank-you screen
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler beim Speichern'
@@ -638,20 +684,21 @@ onUnmounted(() => {
             </div>
           </section>
 
-          <div v-if="showTieQuestion" class="mb-6 rounded-2xl border border-[#c8b48a] bg-[#faf7f2] p-5">
+          <div v-if="showTieQuestion && tieQuestionPerfumes.length > 1" class="mb-6 rounded-2xl border border-[#c8b48a] bg-[#faf7f2] p-5">
             <p class="text-base font-semibold text-[#3e352d] md:text-lg">
               Sie haben diesen Düften die gleiche Bewertung gegeben. Welcher dieser Düfte trifft Ihren Geschmack am besten?
             </p>
             <div class="mt-4 flex flex-wrap gap-2">
               <button
-                v-for="p in topTiePerfumes"
+                v-for="p in tieQuestionPerfumes"
                 :key="`tie-${p.perfume_id}`"
                 type="button"
                 class="rounded-full border px-4 py-2 text-sm font-medium transition"
                 :class="isFavorite(p)
                   ? 'border-[#8e6c2a] bg-[#8e6c2a] text-white'
                   : 'border-[#c8b48a] bg-white text-[#1a1612] hover:bg-[#f0e8d6]'"
-                @click="selectTieFavorite(Number(p.perfume_id))"
+                :disabled="saving"
+                @click="saveTieBreakerSelection(Number(p.perfume_id))"
               >
                 {{ p.brand_name }} {{ p.name }}
               </button>

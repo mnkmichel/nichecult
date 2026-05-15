@@ -319,12 +319,45 @@ export const useAuthApi = () => {
   }
 
   const savePerfumeRating = async (token: string, payload: SavePerfumeRatingPayload) => {
-    return await $fetch<{ ok: boolean; ratingId?: number; setStatus?: string; error?: string }>(apiUrl('save-perfume-rating.php'), {
+    return await $fetch<{
+      ok: boolean
+      ratingId?: number
+      setStatus?: string
+      favorite?: {
+        auto_favorite: boolean
+        tied_samples: number[]
+        needs_question: boolean
+        favorite_id: number | null
+        highest_score: number | null
+      }
+      error?: string
+    }>(apiUrl('save-perfume-rating.php'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
       },
       body: payload,
+    })
+  }
+
+  const selectFavoriteSample = async (token: string, userSampleSetId: number, perfumeId: number) => {
+    return await $fetch<{
+      ok: boolean
+      favorite_id?: number
+      auto_favorite?: boolean
+      tied_samples?: number[]
+      needs_question?: boolean
+      highest_score?: number | null
+      error?: string
+    }>(apiUrl('select-favorite-sample.php'), {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: {
+        userSampleSetId,
+        perfumeId,
+      },
     })
   }
 
@@ -445,6 +478,7 @@ export const useAuthApi = () => {
     listSampleSets,
     getSampleSetDetail,
     savePerfumeRating,
+    selectFavoriteSample,
     assignSampleStartSet,
     assignQrSampleSet,
     adminBackfillSampleSet,

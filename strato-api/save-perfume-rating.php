@@ -7,6 +7,7 @@ $config = require __DIR__ . '/config.php';
 require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/jwt.php';
+require __DIR__ . '/lib/favorite_selection.php';
 
 setCorsHeaders($config);
 handlePreflightAndExit();
@@ -164,6 +165,10 @@ try {
         $pdo->exec('ALTER TABLE sample_set_perfume_rating_answers ADD INDEX idx_sspr_answers_question (rating_id, question_key)');
     }
 
+    if (!$hasColumn($pdo, 'user_sample_sets', 'favorite_perfume_id')) {
+        $pdo->exec('ALTER TABLE user_sample_sets ADD COLUMN favorite_perfume_id BIGINT NULL AFTER set_status');
+    }
+
     $hasRatingUpdatedAt = $hasColumn($pdo, 'sample_set_perfume_ratings', 'updated_at');
     $hasRatingAnswersTable = $hasTable($pdo, 'sample_set_perfume_rating_answers');
     $hasUserDeadlineAt = $hasColumn($pdo, 'user_sample_sets', 'rating_deadline_at');
@@ -283,12 +288,21 @@ try {
         'id' => $userSampleSetId,
     ]);
 
+    $favoriteState = revalidateFavorite($pdo, $userId, $userSampleSetId);
+
     $pdo->commit();
 
     jsonResponse([
         'ok' => true,
         'ratingId' => $ratingId,
         'setStatus' => $status,
+        'favorite' => [
+            'auto_favorite' => $favoriteState['auto_favorite'],
+            'tied_samples' => $favoriteState['tied_samples'],
+            'needs_question' => $favoriteState['needs_question'],
+            'favorite_id' => $favoriteState['favorite_id'],
+            'highest_score' => $favoriteState['highest_score'],
+        ],
     ]);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {

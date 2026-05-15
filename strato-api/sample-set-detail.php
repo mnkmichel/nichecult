@@ -8,6 +8,7 @@ require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/db.php';
 require __DIR__ . '/lib/jwt.php';
 require __DIR__ . '/lib/uploads.php';
+require __DIR__ . '/lib/favorite_selection.php';
 
 setCorsHeaders($config);
 handlePreflightAndExit();
@@ -135,25 +136,7 @@ try {
         return $perfume;
     }, $itemsStmt->fetchAll());
 
-    $favoritePerfumeId = null;
-    $favoriteScore = -1.0;
-
-    foreach ($perfumes as $perfume) {
-        if ($perfume['overall_score'] === null) {
-            continue;
-        }
-
-        $score = (
-            (float) ($perfume['overall_score'] ?? 0)
-            + (float) ($perfume['longevity_score'] ?? 0)
-            + (float) ($perfume['sillage_score'] ?? 0)
-        ) / 3;
-
-        if ($score > $favoriteScore) {
-            $favoriteScore = $score;
-            $favoritePerfumeId = (int) $perfume['perfume_id'];
-        }
-    }
+    $favoritePerfumeId = getFavorite($pdo, (int) $claims['sub'], $userSampleSetId);
 
     jsonResponse([
         'ok' => true,
