@@ -11,9 +11,9 @@ const sortBy = ref<'relevance' | 'price-desc' | 'price-asc' | 'abc'>('relevance'
 const perfumes = ref<Array<Record<string, any>>>([])
 const ratingByPerfumeId = ref<Record<number, number>>({})
 
-const priceLabel = (cents: number) => {
+const euroLabel = (cents: number) => {
   const value = Math.round(cents) / 100
-  return `100 ml · ${value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+  return `${value.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 }
 
 const discountedCents = (baseCents: number) => Math.round(baseCents * 0.85)
@@ -225,23 +225,34 @@ onMounted(loadData)
               </div>
             </div>
 
-            <div class="space-y-2 p-3 pb-2.5 sm:p-3.5 sm:pb-3">
+            <div class="space-y-2 p-3 pb-2.5 text-center sm:p-3.5 sm:pb-3">
               <div class="space-y-0.5">
                 <p class="text-[10px] uppercase tracking-[0.18em] text-[#7f6a4c] sm:text-[11px]">{{ item.brand_name || 'Niche Cult' }}</p>
                 <h3 class="text-[0.98rem] font-semibold tracking-tight text-[#1a1612] sm:text-[1.06rem]">{{ item.name }}</h3>
               </div>
 
-              <div class="space-y-0.5 text-[12px]">
+              <div class="space-y-1 text-[12px]">
                 <template v-if="isTested(perfumeIdOf(item))">
-                  <p class="text-stone-500 line-through">Normal: {{ priceLabel(Number(item.price_cents || 0)) }}</p>
-                  <p class="font-semibold text-emerald-700">Rabattiert: {{ priceLabel(discountedCents(Number(item.price_cents || 0))) }}</p>
+                  <div class="mx-auto inline-grid grid-cols-[max-content_max-content_max-content] items-baseline justify-center gap-x-1.5 text-center">
+                    <span class="font-medium text-stone-500 line-through">Normal:</span>
+                    <span class="text-stone-500 line-through">100 ml</span>
+                    <span class="text-stone-500 line-through">· {{ euroLabel(Number(item.price_cents || 0)) }}</span>
+
+                    <span class="font-semibold text-emerald-700">Kurationspreis:</span>
+                    <span class="font-semibold text-emerald-700">100 ml</span>
+                    <span class="font-semibold text-emerald-700">· {{ euroLabel(discountedCents(Number(item.price_cents || 0))) }}</span>
+                  </div>
                 </template>
                 <template v-else>
-                  <p class="font-semibold text-stone-800">Normal: {{ priceLabel(Number(item.price_cents || 0)) }}</p>
+                  <div class="mx-auto inline-grid grid-cols-[max-content_max-content_max-content] items-baseline justify-center gap-x-1.5 text-center font-semibold text-stone-800">
+                    <span>Normal:</span>
+                    <span>100 ml</span>
+                    <span>· {{ euroLabel(Number(item.price_cents || 0)) }}</span>
+                  </div>
                 </template>
               </div>
 
-              <div class="flex flex-wrap gap-1">
+              <div class="flex flex-wrap justify-center gap-1">
                 <span v-if="isTested(perfumeIdOf(item))" class="rounded-full bg-[#e5f7ee] px-3 py-1 text-xs font-semibold text-emerald-800">
                   Score {{ scoreOutOfFiveLabel(perfumeIdOf(item)) }}
                 </span>
