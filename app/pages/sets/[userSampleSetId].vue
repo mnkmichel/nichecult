@@ -441,7 +441,7 @@ const isDuftInfoOpen = (opt: string) => activeDuftInfo.value === opt
 
 const startPerfumeRating = (perfumeIndex: number) => {
   if (isDeadlineExpired.value) {
-    error.value = 'Die Bewertungsfrist fuer dieses Set ist abgelaufen.'
+    error.value = 'Die Bewertungsfrist für dieses Set ist abgelaufen.'
     return
   }
 
@@ -507,7 +507,7 @@ const goNext = async () => {
   if (!perfume) return
 
   if (isDeadlineExpired.value) {
-    error.value = 'Die Bewertungsfrist fuer dieses Set ist abgelaufen.'
+    error.value = 'Die Bewertungsfrist für dieses Set ist abgelaufen.'
     return
   }
 

@@ -26,7 +26,7 @@ const submit = async () => {
       return
     }
 
-    success.value = res.message || 'Wenn ein Konto mit dieser E-Mail existiert, haben wir einen Link zum Zuruecksetzen geschickt.'
+    success.value = res.message || 'Wenn ein Konto mit dieser E-Mail existiert, haben wir einen Link zum Zurücksetzen geschickt.'
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Anfrage fehlgeschlagen'
   } finally {
@@ -39,7 +39,7 @@ const submit = async () => {
   <main class="min-h-screen bg-stone-100 px-4 py-10">
     <div class="mx-auto w-full max-w-md rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
       <h1 class="text-2xl font-bold">Passwort vergessen</h1>
-      <p class="mt-1 text-sm text-stone-600">Geben Sie Ihre E-Mail ein. Wir senden Ihnen einen Link zum Zuruecksetzen.</p>
+      <p class="mt-1 text-sm text-stone-600">Geben Sie Ihre E-Mail ein. Wir senden Ihnen einen Link zum Zurücksetzen.</p>
 
       <form class="mt-6 space-y-4" @submit.prevent="submit">
         <input v-model="form.email" class="w-full rounded-lg border border-stone-300 px-3 py-2" type="email" placeholder="E-Mail" required />
@@ -52,7 +52,7 @@ const submit = async () => {
       <p v-if="error" class="mt-4 text-sm text-red-600">{{ error }}</p>
       <p v-if="success" class="mt-4 text-sm text-emerald-700">{{ success }}</p>
 
-      <NuxtLink to="/login" class="mt-5 inline-block text-sm text-stone-700 underline">Zurueck zum Login</NuxtLink>
+      <NuxtLink to="/login" class="mt-5 inline-block text-sm text-stone-700 underline">Zurück zum Login</NuxtLink>
     </div>
   </main>
 </template>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 useSeoMeta({
   title: 'Impressum | Niche Cult',
-  description: 'Impressum und Pflichtangaben gemaess § 5 DDG sowie weitere rechtliche Hinweise.',
+  description: 'Impressum und Pflichtangaben gemäß § 5 DDG sowie weitere rechtliche Hinweise.',
 })
 </script>
 
@@ -17,7 +17,7 @@ useSeoMeta({
             <p class="text-xs uppercase tracking-[0.26em] text-amber-800" style="font-family: Georgia, serif;">Niche Cult</p>
             <h1 class="mt-2 text-3xl font-semibold md:text-4xl">Impressum</h1>
             <p class="mt-3 max-w-2xl text-sm text-stone-600 md:text-base">
-              Dieses Impressum enthaelt die gesetzlich erforderlichen Anbieterangaben.
+              Dieses Impressum enthält die gesetzlich erforderlichen Anbieterangaben.
               Bitte ersetze die Platzhalter in eckigen Klammern mit deinen echten Daten.
             </p>
           </div>
@@ -33,7 +33,7 @@ useSeoMeta({
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">1. Anbieter</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              [Vollstaendiger Name / Firma]<br>
+              [Vollständiger Name / Firma]<br>
               [Rechtsform, falls vorhanden]<br>
               [Strasse und Hausnummer]<br>
               [PLZ Ort]<br>
@@ -68,12 +68,12 @@ useSeoMeta({
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">5. Umsatzsteuer-ID (falls vorhanden)</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              Umsatzsteuer-Identifikationsnummer gemaess § 27a UStG: [USt-IdNr.]
+              Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: [USt-IdNr.]
             </p>
           </article>
 
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
-            <h2 class="text-lg font-semibold">6. Verantwortlich fuer journalistisch-redaktionelle Inhalte (falls relevant)</h2>
+            <h2 class="text-lg font-semibold">6. Verantwortlich für journalistisch-redaktionelle Inhalte (falls relevant)</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
               [Vorname Nachname]<br>
               [Anschrift]
@@ -85,7 +85,7 @@ useSeoMeta({
           <article class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
             <h2 class="text-lg font-semibold">7. EU-Streitschlichtung</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              Die Europaeische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
+              Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:
               <a class="font-semibold text-amber-800 underline-offset-2 hover:underline" href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener noreferrer">
                 https://ec.europa.eu/consumers/odr
               </a>
@@ -102,19 +102,19 @@ useSeoMeta({
           </article>
 
           <article class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
-            <h2 class="text-lg font-semibold">9. Haftung fuer Inhalte</h2>
+            <h2 class="text-lg font-semibold">9. Haftung für Inhalte</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              Als Diensteanbieter sind wir fuer eigene Inhalte auf diesen Seiten nach den allgemeinen
-              Gesetzen verantwortlich. Wir uebernehmen jedoch keine Gewaehr fuer die Aktualitaet,
-              Vollstaendigkeit und Richtigkeit der bereitgestellten Inhalte.
+              Als Diensteanbieter sind wir für eigene Inhalte auf diesen Seiten nach den allgemeinen
+              Gesetzen verantwortlich. Wir übernehmen jedoch keine Gewähr für die Aktualität,
+              Vollständigkeit und Richtigkeit der bereitgestellten Inhalte.
             </p>
           </article>
 
           <article class="rounded-2xl border border-stone-200 bg-stone-50 p-5">
-            <h2 class="text-lg font-semibold">10. Haftung fuer Links</h2>
+            <h2 class="text-lg font-semibold">10. Haftung für Links</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              Unser Angebot enthaelt Links zu externen Websites Dritter, auf deren Inhalte wir keinen
-              Einfluss haben. Deshalb koennen wir fuer diese fremden Inhalte auch keine Gewaehr uebernehmen.
+              Unser Angebot enthält Links zu externen Websites Dritter, auf deren Inhalte wir keinen
+              Einfluss haben. Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen.
             </p>
           </article>
 
@@ -122,8 +122,8 @@ useSeoMeta({
             <h2 class="text-lg font-semibold">11. Urheberrecht</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
               Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem
-              deutschen Urheberrecht. Die Vervielfaeltigung, Bearbeitung, Verbreitung und jede Art der
-              Verwertung ausserhalb der Grenzen des Urheberrechtes beduerfen der schriftlichen Zustimmung
+              deutschen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der
+              Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung
               des jeweiligen Autors bzw. Erstellers.
             </p>
           </article>

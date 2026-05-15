@@ -203,7 +203,7 @@ try {
             $pdo->rollBack();
             jsonResponse([
                 'ok' => false,
-                'error' => 'Die Bewertungsfrist fuer dieses Set ist abgelaufen',
+                'error' => 'Die Bewertungsfrist für dieses Set ist abgelaufen',
             ], 403);
         }
     }

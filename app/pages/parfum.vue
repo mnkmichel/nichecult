@@ -158,7 +158,7 @@ onMounted(loadData)
           </span>
           <div class="space-y-3">
             <h1 class="text-3xl font-semibold tracking-tight text-[#1a1612] sm:text-4xl lg:text-5xl">
-              Parfums fuer Sie
+              Parfums für Sie
             </h1>
             <p class="max-w-2xl text-sm leading-6 text-[#5a4820] sm:text-base">
               Relevanz zeigt getestete Duefte zuerst, sortiert nach Ihrer bisherigen Bewertung.
