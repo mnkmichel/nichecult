@@ -998,7 +998,7 @@ onUnmounted(() => {
                 <div class="flex flex-col gap-8">
                   <div v-for="q in currentSlideQuestions" :key="q.key" class="mt-8">
                     <p v-if="currentSlideQuestions.length > 1" class="mb-3 text-[1.05rem] font-medium leading-snug text-[#1a1612] md:text-[1.2rem]" style="font-family: Georgia, serif;">{{ q.title }}</p>
-                    <div class="relative flex justify-between text-[10px] font-medium leading-tight sm:text-xs md:text-sm">
+                    <div class="relative flex justify-between text-[11px] font-medium leading-tight sm:text-xs md:text-sm">
                       <span class="max-w-[34%] text-left">{{ (q as any).left }}</span>
                       <span class="absolute left-1/2 max-w-[40%] -translate-x-1/2 text-center">{{ (q as any).center }}</span>
                       <span class="max-w-[34%] text-right">{{ (q as any).right }}</span>
@@ -1025,7 +1025,7 @@ onUnmounted(() => {
               <!-- Labeled 5-point slider (overallMatch) -->
               <template v-else-if="currentQ.type === 'labeled'">
                 <div class="mt-8">
-                  <div class="relative flex justify-between text-[10px] font-medium leading-tight sm:text-xs md:text-lg">
+                  <div class="relative flex justify-between text-[11px] font-medium leading-tight sm:text-xs md:text-lg">
                     <span
                       v-for="(lbl, li) in ((currentSlideFirstQuestion as any)?.labels || [])"
                       :key="li"
