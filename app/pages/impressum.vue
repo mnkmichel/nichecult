@@ -18,7 +18,6 @@ useSeoMeta({
             <h1 class="mt-2 text-3xl font-semibold md:text-4xl">Impressum</h1>
             <p class="mt-3 max-w-2xl text-sm text-stone-600 md:text-base">
               Dieses Impressum enthält die gesetzlich erforderlichen Anbieterangaben.
-              Bitte ersetze die Platzhalter in eckigen Klammern mit deinen echten Daten.
             </p>
           </div>
           <NuxtLink
@@ -33,50 +32,47 @@ useSeoMeta({
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">1. Anbieter</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              [Vollständiger Name / Firma]<br>
-              [Rechtsform, falls vorhanden]<br>
-              [Strasse und Hausnummer]<br>
-              [PLZ Ort]<br>
-              [Land]
+              Lorenz Fellerer<br>
+              Keine Rechtsform<br>
+              Am Brückenbasar 6<br>
+              93059 Regensburg<br>
+              Deutschland
             </p>
           </article>
 
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">2. Kontakt</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              Telefon: [Telefonnummer]<br>
-              E-Mail: [E-Mail-Adresse]<br>
-              Website: [Domain]
+              Telefon: 017661768082<br>
+              E-Mail: lorenz_fellerer@web.de
             </p>
           </article>
 
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">3. Vertretungsberechtigte Person</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              [Vorname Nachname]
+              Lorenz Fellerer
             </p>
           </article>
 
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">4. Registereintrag (falls vorhanden)</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              Registergericht: [Registergericht]<br>
-              Registernummer: [HRB/HRA/VR ...]
+              Nicht vorhanden
             </p>
           </article>
 
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">5. Umsatzsteuer-ID (falls vorhanden)</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: [USt-IdNr.]
+              Nicht vorhanden
             </p>
           </article>
 
           <article class="rounded-2xl border border-[#e7ddcd] bg-[#fcfaf6] p-5">
             <h2 class="text-lg font-semibold">6. Verantwortlich für journalistisch-redaktionelle Inhalte (falls relevant)</h2>
             <p class="mt-2 text-sm leading-6 text-stone-700">
-              [Vorname Nachname]<br>
-              [Anschrift]
+              Nicht relevant
             </p>
           </article>
         </div>
