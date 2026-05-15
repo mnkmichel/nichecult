@@ -282,6 +282,24 @@ const priceEuro = (priceCents: unknown) => {
   })
 }
 
+const mergePerfumeInState = (perfumeId: number, updates: Record<string, any>) => {
+  perfumes.value = perfumes.value.map((perfume) => {
+    if (Number(perfume.id) !== Number(perfumeId)) {
+      return perfume
+    }
+    return {
+      ...perfume,
+      ...updates,
+    }
+  })
+  hydrateDrafts()
+}
+
+const prependPerfumeInState = (perfume: Record<string, any>) => {
+  perfumes.value = [perfume, ...perfumes.value]
+  hydrateDrafts()
+}
+
 const togglePerfumeEditor = (perfumeId: number) => {
   openPerfumeEditorId.value = openPerfumeEditorId.value === perfumeId ? null : perfumeId
 }
@@ -453,6 +471,17 @@ const createPerfume = async () => {
 
     createdPerfume.value = res.perfume || null
     success.value = 'Parfum erfolgreich angelegt.'
+    prependPerfumeInState({
+      id: Number(res.perfume?.id || 0),
+      name: res.perfume?.name ?? perfumeForm.name,
+      brand_name: res.perfume?.brand_name ?? perfumeForm.brand_name,
+      description: res.perfume?.description ?? perfumeForm.description,
+      size_ml: Number(res.perfume?.size_ml ?? perfumeForm.size_ml ?? 100),
+      price_cents: Number(res.perfume?.price_cents ?? perfumeForm.price_cents ?? 0),
+      discount_percent: Number(res.perfume?.discount_percent ?? perfumeForm.discount_percent ?? 0),
+      is_active: Number(res.perfume?.is_active ?? perfumeForm.is_active ?? 1),
+      image_url: res.perfume?.image_url ?? null,
+    })
     perfumeForm.name = ''
     perfumeForm.brand_name = ''
     perfumeForm.description = ''
@@ -462,7 +491,6 @@ const createPerfume = async () => {
     perfumeForm.is_active = '1'
     perfumeImageFile.value = null
     perfumeImagePreview.value = null
-    await loadAdminData()
   } catch (e: any) {
     error.value = e?.data?.details || e?.data?.error || e?.message || 'Parfum konnte nicht angelegt werden'
   } finally {
@@ -598,7 +626,7 @@ const updatePerfume = async (perfumeId: number) => {
       body.append('image', perfumeEditFile[perfumeId] as File)
     }
 
-    const res = await $fetch<{ ok: boolean; error?: string }>(`${apiBase}/admin-update-perfume.php`, {
+    const res = await $fetch<{ ok: boolean; perfume?: Record<string, any>; error?: string }>(`${apiBase}/admin-update-perfume.php`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body,
@@ -611,7 +639,16 @@ const updatePerfume = async (perfumeId: number) => {
 
     success.value = 'Parfum aktualisiert.'
     perfumeEditFile[perfumeId] = null
-    await loadAdminData()
+    mergePerfumeInState(perfumeId, {
+      name: res.perfume?.name ?? draft.name,
+      brand_name: res.perfume?.brand_name ?? draft.brand_name,
+      description: res.perfume?.description ?? draft.description,
+      size_ml: Number(res.perfume?.size_ml ?? draft.size_ml ?? 100),
+      price_cents: Number(res.perfume?.price_cents ?? draft.price_cents ?? 0),
+      discount_percent: Number(res.perfume?.discount_percent ?? draft.discount_percent ?? 0),
+      is_active: Number(res.perfume?.is_active ?? draft.is_active ?? 1),
+      image_url: res.perfume?.image_url ?? perfumes.value.find((perfume) => Number(perfume.id) === Number(perfumeId))?.image_url ?? null,
+    })
   } catch (e: any) {
     error.value = e?.data?.details || e?.data?.error || e?.message || 'Parfum konnte nicht aktualisiert werden'
   } finally {

@@ -28,7 +28,7 @@ if (!$claims || empty($claims['admin'])) {
 
 try {
     $pdo = getPdo($config);
-    $stmt = $pdo->query('SELECT id, name, brand_name, description, image_path, price_cents, discount_percent, is_active, created_at FROM perfumes ORDER BY created_at DESC');
+    $stmt = $pdo->query('SELECT id, name, brand_name, description, image_path, size_ml, price_cents, discount_percent, is_active, created_at FROM perfumes ORDER BY created_at DESC');
     $perfumes = array_map(static function (array $perfume): array {
         $perfume['image_url'] = publicAssetUrl($perfume['image_path'] ?? null);
         return $perfume;

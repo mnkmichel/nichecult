@@ -17,7 +17,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
 
 try {
     $pdo = getPdo($config);
-    $stmt = $pdo->query('SELECT id, name, brand_name, description, image_path, price_cents, discount_percent, is_active FROM perfumes WHERE is_active = 1 ORDER BY name ASC');
+    $stmt = $pdo->query('SELECT id, name, brand_name, description, image_path, size_ml, price_cents, discount_percent, is_active FROM perfumes WHERE is_active = 1 ORDER BY name ASC');
     $perfumes = array_map(static function (array $perfume): array {
         $perfume['image_url'] = publicAssetUrl($perfume['image_path'] ?? null);
         return $perfume;

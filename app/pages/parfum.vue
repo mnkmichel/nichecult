@@ -235,18 +235,18 @@ onMounted(loadData)
                 <template v-if="isTested(perfumeIdOf(item))">
                   <div class="mx-auto inline-grid grid-cols-[max-content_max-content_max-content] items-baseline justify-center gap-x-1.5 text-center">
                     <span class="font-medium text-stone-500 line-through">Normal:</span>
-                    <span class="text-stone-500 line-through">100 ml</span>
+                    <span class="text-stone-500 line-through">{{ Number(item.size_ml || 100) }} ml</span>
                     <span class="text-stone-500 line-through">· {{ euroLabel(Number(item.price_cents || 0)) }}</span>
 
                     <span class="font-semibold text-emerald-700">Kurationspreis:</span>
-                    <span class="font-semibold text-emerald-700">100 ml</span>
+                    <span class="font-semibold text-emerald-700">{{ Number(item.size_ml || 100) }} ml</span>
                     <span class="font-semibold text-emerald-700">· {{ euroLabel(discountedCents(Number(item.price_cents || 0))) }}</span>
                   </div>
                 </template>
                 <template v-else>
                   <div class="mx-auto inline-grid grid-cols-[max-content_max-content_max-content] items-baseline justify-center gap-x-1.5 text-center font-semibold text-stone-800">
                     <span>Normal:</span>
-                    <span>100 ml</span>
+                    <span>{{ Number(item.size_ml || 100) }} ml</span>
                     <span>· {{ euroLabel(Number(item.price_cents || 0)) }}</span>
                   </div>
                 </template>
