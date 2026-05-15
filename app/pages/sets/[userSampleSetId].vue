@@ -28,6 +28,43 @@ const currentQuestionStepLabel = computed(() => `${Math.min(currentQuestion.valu
 const currentQuestionPercentage = computed(() => Math.round(Math.min(((currentQuestion.value + 1) / slideConfig.length) * 100, 100)))
 const currentQuestionProgress = computed(() => `${currentQuestionPercentage.value}%`)
 
+const perfumeSizeStorageKey = 'nichecult_perfume_sizes'
+
+const loadPerfumeSizeMap = (): Record<number, number> => {
+  if (!process.client) return {}
+  try {
+    const raw = localStorage.getItem(perfumeSizeStorageKey)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const result: Record<number, number> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      const id = Number(key)
+      const size = Number(value)
+      if (Number.isFinite(id) && Number.isFinite(size) && size > 0) {
+        result[id] = size
+      }
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+const applyPerfumeSizeOverrides = (items: Array<Record<string, any>>) => {
+  const sizeMap = loadPerfumeSizeMap()
+  return items.map((perfume) => {
+    const perfumeId = Number(perfume.perfume_id ?? perfume.id ?? 0)
+    const overrideSize = sizeMap[perfumeId]
+    if (!overrideSize) {
+      return perfume
+    }
+    return {
+      ...perfume,
+      size_ml: overrideSize,
+    }
+  })
+}
+
 const duftfamilieDescriptions: Record<string, string> = {
   Zitrus: 'Erinnert an Zitrone, Bergamotte, Grapefruit oder Orangenschale.',
   Fruchtig: 'Erinnert an Beeren, Apfel, Pfirsich, Birne oder tropische Früchte.',
@@ -530,7 +567,7 @@ const loadData = async () => {
     if (!token) { await navigateTo('/login'); return }
     const res = await getSampleSetDetail(token, userSampleSetId.value)
     sampleSet.value = res.sampleSet || null
-    perfumes.value = res.perfumes || []
+    perfumes.value = applyPerfumeSizeOverrides(res.perfumes || [])
     
     // Check for locally saved tie-breaker selection FIRST (higher priority if API not deployed)
     const localTieFavoriteId = getTieBreakerLocal()

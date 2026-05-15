@@ -20,6 +20,43 @@ const discountedCents = (baseCents: number) => Math.round(baseCents * 0.85)
 
 const perfumeIdOf = (item: Record<string, any>) => Number(item?.id ?? item?.perfume_id ?? NaN)
 
+const perfumeSizeStorageKey = 'nichecult_perfume_sizes'
+
+const loadPerfumeSizeMap = (): Record<number, number> => {
+  if (!process.client) return {}
+  try {
+    const raw = localStorage.getItem(perfumeSizeStorageKey)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const result: Record<number, number> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      const id = Number(key)
+      const size = Number(value)
+      if (Number.isFinite(id) && Number.isFinite(size) && size > 0) {
+        result[id] = size
+      }
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+const applyPerfumeSizeOverrides = (items: Array<Record<string, any>>) => {
+  const sizeMap = loadPerfumeSizeMap()
+  return items.map((item) => {
+    const perfumeId = perfumeIdOf(item)
+    const overrideSize = sizeMap[perfumeId]
+    if (!overrideSize) {
+      return item
+    }
+    return {
+      ...item,
+      size_ml: overrideSize,
+    }
+  })
+}
+
 const isTested = (perfumeId: number) => Number.isFinite(ratingByPerfumeId.value[Number(perfumeId)])
 
 const relevanceScore = (perfumeId: number) => ratingByPerfumeId.value[Number(perfumeId)] ?? -1
@@ -94,7 +131,7 @@ const loadData = async () => {
       listSampleSets(token),
     ])
 
-    perfumes.value = perfumeRes.perfumes || []
+    perfumes.value = applyPerfumeSizeOverrides(perfumeRes.perfumes || [])
 
     const allSets = sampleSetRes.sampleSets || []
     const detailResponses = await Promise.all(allSets.map(set => getSampleSetDetail(token, Number(set.user_sample_set_id))))

@@ -282,6 +282,44 @@ const priceEuro = (priceCents: unknown) => {
   })
 }
 
+const perfumeSizeStorageKey = 'nichecult_perfume_sizes'
+
+const loadPerfumeSizeMap = (): Record<number, number> => {
+  if (!process.client) return {}
+  try {
+    const raw = localStorage.getItem(perfumeSizeStorageKey)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const result: Record<number, number> = {}
+    for (const [key, value] of Object.entries(parsed)) {
+      const perfumeId = Number(key)
+      const size = Number(value)
+      if (Number.isFinite(perfumeId) && Number.isFinite(size) && size > 0) {
+        result[perfumeId] = size
+      }
+    }
+    return result
+  } catch {
+    return {}
+  }
+}
+
+const savePerfumeSizeMap = (map: Record<number, number>) => {
+  if (!process.client) return
+  localStorage.setItem(perfumeSizeStorageKey, JSON.stringify(map))
+}
+
+const rememberPerfumeSize = (perfumeId: number, sizeMl: unknown) => {
+  const id = Number(perfumeId)
+  const size = Number(sizeMl)
+  if (!Number.isFinite(id) || !Number.isFinite(size) || size <= 0) {
+    return
+  }
+  const map = loadPerfumeSizeMap()
+  map[id] = size
+  savePerfumeSizeMap(map)
+}
+
 const mergePerfumeInState = (perfumeId: number, updates: Record<string, any>) => {
   perfumes.value = perfumes.value.map((perfume) => {
     if (Number(perfume.id) !== Number(perfumeId)) {
@@ -471,12 +509,17 @@ const createPerfume = async () => {
 
     createdPerfume.value = res.perfume || null
     success.value = 'Parfum erfolgreich angelegt.'
+    const createdId = Number(res.perfume?.id || 0)
+    const createdSize = Number(res.perfume?.size_ml ?? perfumeForm.size_ml ?? 100)
+    if (createdId > 0) {
+      rememberPerfumeSize(createdId, createdSize)
+    }
     prependPerfumeInState({
-      id: Number(res.perfume?.id || 0),
+      id: createdId,
       name: res.perfume?.name ?? perfumeForm.name,
       brand_name: res.perfume?.brand_name ?? perfumeForm.brand_name,
       description: res.perfume?.description ?? perfumeForm.description,
-      size_ml: Number(res.perfume?.size_ml ?? perfumeForm.size_ml ?? 100),
+      size_ml: createdSize,
       price_cents: Number(res.perfume?.price_cents ?? perfumeForm.price_cents ?? 0),
       discount_percent: Number(res.perfume?.discount_percent ?? perfumeForm.discount_percent ?? 0),
       is_active: Number(res.perfume?.is_active ?? perfumeForm.is_active ?? 1),
@@ -639,6 +682,7 @@ const updatePerfume = async (perfumeId: number) => {
 
     success.value = 'Parfum aktualisiert.'
     perfumeEditFile[perfumeId] = null
+    rememberPerfumeSize(perfumeId, Number(res.perfume?.size_ml ?? draft.size_ml ?? 100))
     mergePerfumeInState(perfumeId, {
       name: res.perfume?.name ?? draft.name,
       brand_name: res.perfume?.brand_name ?? draft.brand_name,
