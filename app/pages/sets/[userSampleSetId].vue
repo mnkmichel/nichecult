@@ -174,6 +174,25 @@ const deadlineCountdown = computed(() => {
   return `Noch ${hours}Std ${minutes}Min ${seconds}Sek`
 })
 
+// Helper: store tie-breaker selection locally (fallback when API not available)
+const saveTieBreakerLocally = (perfumeId: number) => {
+  const key = `nichecult_tie_favorite_${userSampleSetId.value}`
+  localStorage.setItem(key, String(perfumeId))
+}
+
+// Helper: get locally stored tie-breaker selection
+const getTieBreakerLocal = (): number | null => {
+  const key = `nichecult_tie_favorite_${userSampleSetId.value}`
+  const stored = localStorage.getItem(key)
+  return stored ? Number(stored) : null
+}
+
+// Helper: clear locally stored tie-breaker
+const clearTieBreakerLocal = () => {
+  const key = `nichecult_tie_favorite_${userSampleSetId.value}`
+  localStorage.removeItem(key)
+}
+
 const saveTieBreakerSelection = async (perfumeId: number) => {
   saving.value = true
   error.value = ''
@@ -185,17 +204,27 @@ const saveTieBreakerSelection = async (perfumeId: number) => {
       return
     }
 
+    // Try API first
     const response = await selectFavoriteSample(token, userSampleSetId.value, perfumeId)
-    if (!response.ok) {
-      error.value = response.error || 'Favorit konnte nicht gespeichert werden'
+    if (response.ok) {
+      favoritePerfumeId.value = response.favorite_id ?? perfumeId
+      clearTieBreakerLocal() // Success: clear local fallback
+      showTieQuestion.value = false
+      tieQuestionPerfumes.value = []
       return
     }
-
-    favoritePerfumeId.value = response.favorite_id ?? perfumeId
+    
+    // API failed: use local fallback
+    saveTieBreakerLocally(perfumeId)
+    favoritePerfumeId.value = perfumeId
     showTieQuestion.value = false
     tieQuestionPerfumes.value = []
   } catch (e: any) {
-    error.value = e?.data?.error || e?.message || 'Favorit konnte nicht gespeichert werden'
+    // API call failed (CORS, network, etc.) → use local fallback
+    saveTieBreakerLocally(perfumeId)
+    favoritePerfumeId.value = perfumeId
+    showTieQuestion.value = false
+    tieQuestionPerfumes.value = []
   } finally {
     saving.value = false
   }
@@ -502,11 +531,23 @@ const loadData = async () => {
     const res = await getSampleSetDetail(token, userSampleSetId.value)
     sampleSet.value = res.sampleSet || null
     perfumes.value = res.perfumes || []
-    favoritePerfumeId.value = res.favoritePerfumeId ?? null
-
-    const tiePerfumes = getTopTiePerfumesByOverall(perfumes.value)
-    tieQuestionPerfumes.value = tiePerfumes
-    showTieQuestion.value = tiePerfumes.length > 1 && !favoritePerfumeId.value
+    
+    // Check for locally saved tie-breaker selection FIRST (higher priority if API not deployed)
+    const localTieFavoriteId = getTieBreakerLocal()
+    if (localTieFavoriteId) {
+      // User selected a favorite in tie-breaker using local fallback
+      favoritePerfumeId.value = localTieFavoriteId
+      showTieQuestion.value = false
+      tieQuestionPerfumes.value = []
+    } else {
+      // Use API response or check if tie-breaker is needed
+      favoritePerfumeId.value = res.favoritePerfumeId ?? null
+      
+      // Check if tie-breaker question is needed
+      const tiePerfumes = getTopTiePerfumesByOverall(perfumes.value)
+      tieQuestionPerfumes.value = tiePerfumes
+      showTieQuestion.value = tiePerfumes.length > 1 && !favoritePerfumeId.value
+    }
 
     for (const p of perfumes.value) ensureAnswers(p.perfume_id)
   } catch (e: any) {
