@@ -31,7 +31,7 @@ $userId = (int) $claims['sub'];
 try {
     $pdo = getPdo($config);
 
-    $existingAssignment = getLatestValidUserSampleSetAssignment($pdo, $userId);
+    $existingAssignment = getPreferredSampleStartUserSampleSetAssignment($pdo, $userId);
     if ($existingAssignment !== null) {
         jsonResponse([
             'ok' => true,

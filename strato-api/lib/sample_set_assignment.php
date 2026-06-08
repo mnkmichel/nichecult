@@ -182,6 +182,33 @@ function getLatestValidUserSampleSetAssignment(PDO $pdo, int $userId): ?array
     ];
 }
 
+function getPreferredSampleStartUserSampleSetAssignment(PDO $pdo, int $userId): ?array
+{
+    // Prefer the most recently assigned set that is still active for rating.
+    $stmt = $pdo->prepare(
+        'SELECT uss.id, uss.sample_set_id, uss.set_status, uss.rating_deadline_at
+         FROM user_sample_sets uss
+         INNER JOIN sample_sets ss ON ss.id = uss.sample_set_id
+         WHERE uss.user_id = :user_id
+           AND uss.set_status <> "completed"
+         ORDER BY uss.id DESC, uss.assigned_at DESC
+         LIMIT 1'
+    );
+    $stmt->execute(['user_id' => $userId]);
+    $row = $stmt->fetch();
+
+    if ($row) {
+        return [
+            'id' => (int) $row['id'],
+            'sample_set_id' => (int) $row['sample_set_id'],
+            'set_status' => (string) $row['set_status'],
+            'rating_deadline_at' => $row['rating_deadline_at'] ?? null,
+        ];
+    }
+
+    return getLatestValidUserSampleSetAssignment($pdo, $userId);
+}
+
 function resolveDefaultSampleSet(PDO $pdo): ?array
 {
     $configuredId = getConfiguredDefaultSampleSetId($pdo);

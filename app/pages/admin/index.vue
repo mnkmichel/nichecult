@@ -45,6 +45,7 @@ type AdminRatingAnalyticsRow = {
   created_at: string | null
   updated_at: string | null
   set_status: string | null
+  is_favorite?: boolean
   answers: Record<string, string>
 }
 
@@ -1183,12 +1184,17 @@ const passgenauigkeitChart = computed(() => {
 
 const userFavoriteMap = computed(() => {
   const map = new Map<number, string>()
-  const scores = new Map<number, number>()
+  const latestSetByUser = new Map<number, number>()
   for (const row of analyticsRows.value) {
-    const score = ((row.overall_score ?? 0) + (row.longevity_score ?? 0) + (row.sillage_score ?? 0)) / 3
-    const current = scores.get(row.user_id)
-    if (current === undefined || score > current) {
-      scores.set(row.user_id, score)
+    if (!row.is_favorite) {
+      continue
+    }
+
+    // If multiple sets have favorites, show the favorite from the newest set.
+    const candidateSetId = Number(row.user_sample_set_id || 0)
+    const currentSetId = latestSetByUser.get(row.user_id) ?? -1
+    if (candidateSetId >= currentSetId) {
+      latestSetByUser.set(row.user_id, candidateSetId)
       const label = row.brand_name ? `${row.brand_name} – ${row.perfume_name}` : row.perfume_name
       map.set(row.user_id, label)
     }

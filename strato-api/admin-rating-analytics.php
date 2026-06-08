@@ -68,6 +68,10 @@ try {
         : 'NULL AS updated_at';
 
     $answersTableAvailable = $hasTable($pdo, 'sample_set_perfume_rating_answers');
+    $hasFavoritePerfumeColumn = $hasColumn($pdo, 'user_sample_sets', 'favorite_perfume_id');
+    $favoriteSelect = $hasFavoritePerfumeColumn
+        ? 'CASE WHEN uss.favorite_perfume_id IS NOT NULL AND uss.favorite_perfume_id = r.perfume_id THEN 1 ELSE 0 END AS is_favorite'
+        : '0 AS is_favorite';
 
     $stmt = $pdo->query(
         "SELECT
@@ -88,7 +92,8 @@ try {
             r.sillage_score,
             r.created_at,
             {$updatedAtSelect},
-            uss.set_status
+                uss.set_status,
+                {$favoriteSelect}
          FROM sample_set_perfume_ratings r
          INNER JOIN users u ON u.id = r.user_id
          INNER JOIN sample_sets ss ON ss.id = r.sample_set_id
@@ -157,6 +162,7 @@ try {
             'created_at' => isset($row['created_at']) ? (string) $row['created_at'] : null,
             'updated_at' => isset($row['updated_at']) ? (string) $row['updated_at'] : null,
             'set_status' => isset($row['set_status']) ? (string) $row['set_status'] : null,
+            'is_favorite' => (int) ($row['is_favorite'] ?? 0) === 1,
             'answers' => $answersByRatingId[$ratingId] ?? [],
         ];
     }, $rows);

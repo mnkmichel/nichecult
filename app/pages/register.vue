@@ -70,7 +70,7 @@ const submit = async () => {
     form.password = ''
     form.privacyAccepted = false
     form.contactConsent = false
-    await navigateTo(redirectTo.value)
+    await navigateTo('/')
   } catch (e: any) {
     error.value = e?.data?.error || e?.message || 'Fehler bei der Registrierung'
   } finally {
