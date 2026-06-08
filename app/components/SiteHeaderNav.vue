@@ -44,20 +44,24 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <nav class="inline-flex rounded-2xl border border-stone-300 bg-white p-1 shadow-sm">
-      <NuxtLink v-if="active !== 'home'" to="/" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Startseite</NuxtLink>
-      <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Startseite</span>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <nav class="inline-flex rounded-2xl border border-stone-300 bg-white p-1 shadow-sm">
+        <NuxtLink v-if="active !== 'home'" to="/" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Startseite</NuxtLink>
+        <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Startseite</span>
 
-      <NuxtLink v-if="active !== 'parfum'" to="/parfum" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum</NuxtLink>
-      <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum</span>
+        <NuxtLink v-if="active !== 'parfum'" to="/parfum" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum</NuxtLink>
+        <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum</span>
 
-      <NuxtLink v-if="active !== 'duftkuration'" to="/duftkuration" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum-Kuration</NuxtLink>
-      <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum-Kuration</span>
+        <NuxtLink v-if="active !== 'duftkuration'" to="/duftkuration" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Parfum-Kuration</NuxtLink>
+        <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Parfum-Kuration</span>
 
-      <template v-if="showSamples">
-        <NuxtLink v-if="active !== 'samples'" to="/sets" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Ihre Samples</NuxtLink>
-        <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Ihre Samples</span>
-      </template>
-    </nav>
+        <template v-if="showSamples">
+          <NuxtLink v-if="active !== 'samples'" to="/sets" class="rounded-xl px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100">Ihre Samples</NuxtLink>
+          <span v-else class="rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white">Ihre Samples</span>
+        </template>
+      </nav>
+
+      <slot name="nav-right" />
+    </div>
   </header>
 </template>

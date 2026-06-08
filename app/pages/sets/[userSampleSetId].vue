@@ -568,6 +568,10 @@ const returnToOverview = async () => {
   await loadData()
 }
 
+const goToSetsOverview = async () => {
+  await navigateTo('/sets')
+}
+
 const canContinue = computed(() => {
   const p = currentPerfume.value
   if (!p) return false
@@ -767,7 +771,18 @@ onUnmounted(() => {
     <div v-else-if="showOverview && hasPerfumes" class="nc-page">
       <div class="nc-page-frame">
         <div class="mx-auto w-full max-w-6xl">
-          <SiteHeaderNav title="Ihre Samples" active="samples" />
+          <SiteHeaderNav title="Ihre Samples" active="samples">
+            <template #nav-right>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm transition hover:bg-stone-50"
+              @click="goToSetsOverview"
+            >
+              <span aria-hidden="true">←</span>
+              Zur Set-Übersicht
+            </button>
+            </template>
+          </SiteHeaderNav>
 
         <div class="w-full">
           <section class="mb-8 rounded-4xl border border-white/70 bg-white/72 p-6 shadow-[0_18px_50px_rgba(62,45,20,0.08)] backdrop-blur md:p-8">
@@ -781,7 +796,6 @@ onUnmounted(() => {
               </div>
 
               <div class="flex flex-col gap-2 text-sm md:items-end md:self-start">
-                
                 <div class="w-full space-y-1 max-w-md rounded-xl px-2.5 py-1.5" :class="deadlineTimerClass">
                   <p class="text-[9px] font-semibold uppercase tracking-[0.14em] opacity-75">Timer</p>
                   <p class="text-sm font-bold leading-none md:text-base">{{ deadlineCountdown }}</p>
@@ -882,9 +896,21 @@ onUnmounted(() => {
     <!-- Per-perfume flow -->
     <div v-else-if="currentPerfume" class="nc-page flex flex-col">
       <div class="nc-page-frame flex flex-1 flex-col">
-        <SiteHeaderNav title="Ihre Samples" active="samples" />
+        <SiteHeaderNav title="Ihre Samples" active="samples">
+          <template #nav-right>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-xl border border-stone-300 bg-white px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+            :disabled="saving"
+            @click="goToSetsOverview"
+          >
+            <span aria-hidden="true">←</span>
+            Zur Set-Übersicht
+          </button>
+          </template>
+        </SiteHeaderNav>
 
-        <div class="mb-4 flex justify-end">
+        <div class="mb-4 mt-3 flex justify-end">
           <div class="w-full max-w-md rounded-xl px-2.5 py-1.5" :class="deadlineTimerClass">
             <p class="text-[9px] font-semibold uppercase tracking-[0.14em] opacity-75">Timer</p>
             <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
