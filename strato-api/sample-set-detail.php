@@ -136,7 +136,10 @@ try {
         return $perfume;
     }, $itemsStmt->fetchAll());
 
-    $favoritePerfumeId = getFavorite($pdo, (int) $claims['sub'], $userSampleSetId);
+    $hasFavoritePerfume = $hasColumn($pdo, 'user_sample_sets', 'favorite_perfume_id');
+    $favoritePerfumeId = $hasFavoritePerfume
+        ? getFavorite($pdo, (int) $claims['sub'], $userSampleSetId)
+        : null;
 
     jsonResponse([
         'ok' => true,

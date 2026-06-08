@@ -1,6 +1,6 @@
-@import "tailwindcss";
-
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
 
 :root {
 	--nc-ink: #1a1717;
@@ -39,7 +39,7 @@
 	}
 
 	.nc-page-frame {
-		@apply mx-auto w-full max-w-7xl;
+		@apply mx-auto w-full max-w-6xl;
 	}
 
 	.nc-tab-bar {

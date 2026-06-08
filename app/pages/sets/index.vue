@@ -75,6 +75,52 @@ const deadlineCountdown = (value: unknown, status: unknown) => {
   return `Noch ${hours}Std ${minutes}Min ${seconds}Sek`
 }
 
+const deadlineUrgency = (value: unknown, status: unknown): 'none' | 'normal' | 'soon' | 'urgent' | 'expired' => {
+  if (String(status || '') === 'completed') {
+    return 'none'
+  }
+
+  const date = parseApiDate(value)
+  if (!date) {
+    return 'none'
+  }
+
+  const diffSeconds = Math.floor((date.getTime() - nowTs.value) / 1000)
+  if (diffSeconds <= 0) {
+    return 'expired'
+  }
+
+  const diffHours = diffSeconds / 3600
+  if (diffHours <= 6) {
+    return 'urgent'
+  }
+  if (diffHours <= 24) {
+    return 'soon'
+  }
+  return 'normal'
+}
+
+const deadlineTimerClass = (value: unknown, status: unknown) => {
+  const urgency = deadlineUrgency(value, status)
+  if (urgency === 'expired') {
+    return 'bg-red-50 text-red-700 border border-red-200'
+  }
+  if (urgency === 'urgent') {
+    return 'bg-amber-100 text-amber-900 border border-amber-200'
+  }
+  if (urgency === 'soon') {
+    return 'bg-amber-50 text-amber-800 border border-amber-200'
+  }
+  return 'bg-[#f6efe2] text-[#5a4820] border border-[#e7dbc7]'
+}
+
+const statusBadgeClass = (value: unknown) => {
+  const status = statusLabel(String(value || ''))
+  if (status === 'Abgeschlossen') return 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+  if (status === 'Geliefert') return 'bg-sky-50 text-sky-800 border border-sky-200'
+  return 'bg-amber-50 text-amber-900 border border-amber-200'
+}
+
 const loadPageData = async () => {
   loading.value = true
   error.value = ''
@@ -135,9 +181,10 @@ onUnmounted(() => {
   <main class="nc-page relative overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(255,245,230,0.95),rgba(245,240,232,1)_42%,rgba(236,228,214,1)_100%)]">
     <div class="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(255,255,255,0))]" />
     <div class="nc-page-frame relative">
-      <SiteHeaderNav title="Ihre Samples" active="samples" />
+      <div class="mx-auto w-full max-w-6xl">
+        <SiteHeaderNav title="Ihre Samples" active="samples" />
 
-      <section class="mx-auto max-w-6xl px-4 pb-6 pt-2 sm:px-6 lg:px-8">
+      <section class="w-full pb-6 pt-2">
         <div class="grid gap-6 lg:grid-cols-[1.4fr_0.6fr] lg:items-end">
           <div class="space-y-4">
             <span class="inline-flex rounded-full border border-[#d8ccb0] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#8b6c2d] shadow-sm backdrop-blur">
@@ -152,25 +199,10 @@ onUnmounted(() => {
               </p>
             </div>
           </div>
-
-          <div class="grid grid-cols-3 gap-3 rounded-3xl border border-white/70 bg-white/70 p-4 shadow-[0_20px_50px_rgba(79,61,31,0.08)] backdrop-blur">
-            <div class="rounded-2xl bg-[#f7f1e6] px-3 py-4 text-center">
-              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8b6c2d]">Gesamt</p>
-              <p class="mt-2 text-2xl font-semibold text-[#1a1612]">{{ setStats.total }}</p>
-            </div>
-            <div class="rounded-2xl bg-[#f7f1e6] px-3 py-4 text-center">
-              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8b6c2d]">Offen</p>
-              <p class="mt-2 text-2xl font-semibold text-[#1a1612]">{{ setStats.open }}</p>
-            </div>
-            <div class="rounded-2xl bg-[#f7f1e6] px-3 py-4 text-center">
-              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8b6c2d]">Fertig</p>
-              <p class="mt-2 text-2xl font-semibold text-[#1a1612]">{{ setStats.completed }}</p>
-            </div>
-          </div>
         </div>
       </section>
 
-      <section class="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
+      <section class="w-full pb-16">
         <div v-if="loading" class="rounded-3xl border border-white/70 bg-white/75 p-6 text-stone-600 shadow-[0_20px_50px_rgba(79,61,31,0.08)] backdrop-blur">
           Lade Daten...
         </div>
@@ -188,40 +220,29 @@ onUnmounted(() => {
             <article
               v-for="item in sampleSets"
               :key="item.user_sample_set_id"
-              class="group overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_18px_45px_rgba(79,61,31,0.09)] backdrop-blur transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_60px_rgba(79,61,31,0.14)]"
+              class="flex h-full flex-col rounded-2xl border border-[#e4d8c4] bg-white/90 p-5 shadow-[0_10px_26px_rgba(79,61,31,0.07)] transition"
             >
-              <div class="relative nc-perfume-card-media">
-                <img
-                  v-if="item.image_url"
-                  :src="item.image_url"
-                  alt="Setbild"
-                  class="nc-perfume-card-image"
-                />
-                <div v-else class="h-full w-full rounded-2xl bg-[#e7dbc7]"></div>
-                <div class="absolute inset-x-4 top-4 flex items-center justify-between gap-3">
-                  <span class="rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5a4820] shadow-sm backdrop-blur">
-                    {{ item.perfume_count }} Parfums
-                  </span>
-                  <span class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-white shadow-sm" :class="statusLabel(item.set_status) === 'Abgeschlossen' ? 'bg-emerald-600/90' : statusLabel(item.set_status) === 'Geliefert' ? 'bg-sky-600/90' : 'bg-amber-600/90'">
+              <div class="flex h-full flex-col">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="space-y-1">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b6c2d]">Sample-Set</p>
+                    <h2 class="text-lg font-semibold tracking-tight text-stone-900">{{ item.title }}</h2>
+                  </div>
+                  <span class="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]" :class="statusBadgeClass(item.set_status)">
                     {{ statusLabel(item.set_status) }}
                   </span>
                 </div>
-              </div>
 
-              <div class="space-y-4 p-5 sm:p-6">
-                <div class="space-y-2">
-                  <h2 class="text-xl font-semibold tracking-tight text-[#1a1612]">{{ item.title }}</h2>
-                  <p v-if="item.description" class="text-sm leading-6 text-[#5a4820]">{{ item.description }}</p>
+                <p v-if="item.description" class="mt-2 text-sm leading-6 text-[#5a4820]">{{ item.description }}</p>
+
+                <div class="mt-3 rounded-lg px-3 py-2" :class="deadlineTimerClass(item.rating_deadline_at, item.set_status)">
+                  <p class="text-sm font-semibold leading-none">{{ deadlineCountdown(item.rating_deadline_at, item.set_status) }}</p>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
-                  <span class="rounded-full bg-[#f6efe2] px-3 py-1 text-xs font-medium text-[#5a4820]">{{ formatDeadline(item.rating_deadline_at) }}</span>
-                  <span class="rounded-full bg-[#f6efe2] px-3 py-1 text-xs font-medium text-[#5a4820]">{{ deadlineCountdown(item.rating_deadline_at, item.set_status) }}</span>
-                </div>
-
+                <div class="mt-4" />
                 <button
                   type="button"
-                  class="block w-full rounded-2xl bg-[#1a1612] px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-[#2a241d]"
+                  class="mt-auto block w-full rounded-xl bg-[#1a1612] px-4 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-[#2a241d]"
                   @click="openSet(item.user_sample_set_id)"
                 >
                   Set öffnen
@@ -231,6 +252,7 @@ onUnmounted(() => {
           </div>
         </div>
       </section>
+      </div>
     </div>
   </main>
 </template>

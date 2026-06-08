@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { getQuestions } from '~/composables/useQuestions'
+
 definePageMeta({
   middleware: 'admin',
 })
@@ -880,7 +882,7 @@ const assignSampleSetToUser = async (setId: number) => {
   }
 }
 
-const activeTab = ref<'perfumes' | 'sets' | 'users' | 'ratings'>('perfumes')
+const activeTab = ref<'perfumes' | 'sets' | 'users'>('perfumes')
 
 const matchesQuery = (value: unknown, query: string) => String(value || '').toLowerCase().includes(query.toLowerCase().trim())
 
@@ -984,8 +986,114 @@ const expectedRatingAnswerKeys = [
   'overallMatch',
 ]
 
+const ratingQuestionByKey = new Map(
+  getQuestions('rating', true).map((question) => [question.key, question]),
+)
+
+const parseFivePointIndex = (value: unknown): number | null => {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return null
+  if (n >= 0 && n <= 4) return Math.round(n)
+  if (n >= 1 && n <= 5) return Math.round(n - 1)
+  return null
+}
+
+const parseChoiceIndex = (value: unknown, optionCount: number): number | null => {
+  const n = Number(value)
+  if (!Number.isFinite(n)) return null
+  if (n >= 0 && n < optionCount) return Math.round(n)
+  if (n >= 1 && n <= optionCount) return Math.round(n - 1)
+  return null
+}
+
+const formatChoiceAnswerText = (key: string, rawValue: unknown): string | null => {
+  const question = ratingQuestionByKey.get(key)
+  if (!question || question.type !== 'choice') return null
+
+  const options = question.rating.options || []
+  if (!options.length) return null
+
+  const resolveSingle = (value: unknown): string | null => {
+    const raw = String(value ?? '').trim()
+    if (!raw) return null
+
+    if (key === 'gender') {
+      const genderScaleLabels = ['Männlich', 'Eher männlich', 'Unisex', 'Eher weiblich', 'Weiblich']
+      const genderIdx = parseFivePointIndex(raw)
+      if (genderIdx !== null && genderScaleLabels[genderIdx]) {
+        return genderScaleLabels[genderIdx]
+      }
+    }
+
+    const idx = parseChoiceIndex(raw, options.length)
+    if (idx !== null) {
+      return options[idx] || null
+    }
+
+    return raw
+  }
+
+  if (Array.isArray(rawValue)) {
+    const labels = rawValue.map((value) => resolveSingle(value)).filter((value): value is string => Boolean(value))
+    return labels.length ? labels.join(', ') : null
+  }
+
+  const text = String(rawValue)
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(text)
+      if (Array.isArray(parsed)) {
+        const labels = parsed.map((value) => resolveSingle(value)).filter((value): value is string => Boolean(value))
+        return labels.length ? labels.join(', ') : null
+      }
+    } catch {
+      // ignore parse errors and continue with single value mapping
+    }
+  }
+
+  return resolveSingle(rawValue)
+}
+
+const formatSliderAnswerText = (key: string, rawValue: unknown): string | null => {
+  const idx = parseFivePointIndex(rawValue)
+  if (idx === null) return null
+
+  const question = ratingQuestionByKey.get(key)
+  if (!question || question.type !== 'slider') return null
+
+  const left = question.rating.left
+  const center = question.rating.center
+  const right = question.rating.right
+
+  if (idx === 0) return left
+  if (idx === 1) return `Eher ${left}`
+  if (idx === 2) return center
+  if (idx === 3) return `Eher ${right}`
+  return right
+}
+
+const formatLabeledAnswerText = (key: string, rawValue: unknown): string | null => {
+  const idx = parseFivePointIndex(rawValue)
+  if (idx === null) return null
+
+  const question = ratingQuestionByKey.get(key)
+  if (!question || question.type !== 'labeled') return null
+
+  return question.rating.labels[idx] || null
+}
+
 const formatAnswerValue = (key: string, rawValue: unknown): string => {
   if (rawValue === null || rawValue === undefined) return '-'
+
+  const choiceText = formatChoiceAnswerText(key, rawValue)
+  if (choiceText) {
+    return choiceText
+  }
+
+  const sliderText = formatSliderAnswerText(key, rawValue)
+  if (sliderText) {
+    return sliderText
+  }
 
   if (key === 'duftfamilien') {
     const list = parseDuftfamilien(rawValue)
@@ -993,8 +1101,7 @@ const formatAnswerValue = (key: string, rawValue: unknown): string => {
   }
 
   if (key === 'overallMatch') {
-    const parsed = parseOverallMatch(rawValue)
-    return parsed ? `${parsed}/5` : '-'
+    return formatLabeledAnswerText(key, rawValue) || '-'
   }
 
   const text = String(rawValue)
@@ -1056,6 +1163,141 @@ const filteredAnalyticsRows = computed(() => {
     const perfumeMatch = analyticsPerfumeId.value === 'all' || Number(analyticsPerfumeId.value) === row.perfume_id
     return setMatch && userMatch && perfumeMatch
   })
+})
+
+const setPerfumeCountById = computed(() => {
+  const map = new Map<number, number>()
+  for (const set of sampleSets.value) {
+    map.set(Number(set.id), Number(set.perfume_count || 0))
+  }
+  return map
+})
+
+const userSetRatings = computed(() => {
+  const visibleUserIds = new Set(filteredUsers.value.map((user) => Number(user.id)))
+  const grouped = new Map<number, {
+    userId: number
+    userLabel: string
+    userEmail: string
+    sets: Array<{
+      userSampleSetId: number
+      setId: number
+      setTitle: string
+      setStatus: string | null
+      favoriteLabel: string | null
+      ratedCount: number
+      totalCount: number
+      ratings: Array<{
+        perfumeId: number
+        perfumeLabel: string
+        overallScore: number | null
+        passgenauigkeit: number | null
+        isFavorite: boolean
+        allAnswers: Array<{ key: string; label: string; value: string }>
+      }>
+    }>
+  }>()
+
+  type SetEntry = {
+    userSampleSetId: number
+    setId: number
+    setTitle: string
+    setStatus: string | null
+    favoriteLabel: string | null
+    ratedCount: number
+    totalCount: number
+    ratings: Array<{
+      perfumeId: number
+      perfumeLabel: string
+      overallScore: number | null
+      passgenauigkeit: number | null
+      isFavorite: boolean
+      allAnswers: Array<{ key: string; label: string; value: string }>
+    }>
+  }
+
+  for (const row of filteredAnalyticsRows.value) {
+    if (!visibleUserIds.has(Number(row.user_id))) {
+      continue
+    }
+
+    if (!grouped.has(row.user_id)) {
+      grouped.set(row.user_id, {
+        userId: row.user_id,
+        userLabel: row.user_name ? `${row.user_name} (${row.user_email})` : row.user_email,
+        userEmail: row.user_email,
+        sets: [],
+      })
+    }
+
+    const userEntry = grouped.get(row.user_id)!
+    let setEntry = userEntry.sets.find((set) => set.userSampleSetId === row.user_sample_set_id)
+    if (!setEntry) {
+      setEntry = {
+        userSampleSetId: row.user_sample_set_id,
+        setId: row.sample_set_id,
+        setTitle: row.sample_set_title || `Set ${row.sample_set_id}`,
+        setStatus: row.set_status || null,
+        favoriteLabel: null,
+        ratedCount: 0,
+        totalCount: Number(setPerfumeCountById.value.get(Number(row.sample_set_id)) || 0),
+        ratings: [],
+      }
+      userEntry.sets.push(setEntry)
+    }
+
+    const perfumeLabel = row.brand_name ? `${row.brand_name} ${row.perfume_name}` : row.perfume_name
+    const rawAnswers = row.answers || {}
+    const expectedEntries = expectedRatingAnswerKeys.map((key) => ({
+      key,
+      label: answerLabelByKey[key] || key,
+      value: formatAnswerValue(key, rawAnswers[key] ?? null),
+    }))
+
+    const extraEntries = Object.entries(rawAnswers)
+      .filter(([key]) => !expectedRatingAnswerKeys.includes(key))
+      .map(([key, value]) => ({
+        key,
+        label: answerLabelByKey[key] || key,
+        value: formatAnswerValue(key, value),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'de'))
+
+    setEntry.ratings.push({
+      perfumeId: row.perfume_id,
+      perfumeLabel,
+      overallScore: row.overall_score,
+      passgenauigkeit: parseOverallMatch(row.answers?.overallMatch),
+      isFavorite: Boolean(row.is_favorite),
+      allAnswers: [...expectedEntries, ...extraEntries],
+    })
+  }
+
+  const computeScore = (rating: { overallScore: number | null; passgenauigkeit: number | null }) => {
+    return ((rating.overallScore ?? 0) * 100) + (rating.passgenauigkeit ?? 0)
+  }
+
+  for (const userEntry of grouped.values()) {
+    for (const setEntry of userEntry.sets) {
+      setEntry.ratings.sort((a, b) => a.perfumeLabel.localeCompare(b.perfumeLabel, 'de'))
+      setEntry.ratedCount = new Set(setEntry.ratings.map((rating) => rating.perfumeId)).size
+      if (!setEntry.totalCount || setEntry.totalCount < setEntry.ratedCount) {
+        setEntry.totalCount = setEntry.ratedCount
+      }
+      const explicitFavorite = setEntry.ratings.find((rating) => rating.isFavorite)
+      if (explicitFavorite) {
+        setEntry.favoriteLabel = explicitFavorite.perfumeLabel
+        continue
+      }
+
+      const bestFallback = [...setEntry.ratings].sort((a, b) => computeScore(b) - computeScore(a))[0]
+      setEntry.favoriteLabel = bestFallback?.perfumeLabel || null
+    }
+
+    userEntry.sets.sort((a, b) => b.userSampleSetId - a.userSampleSetId)
+  }
+
+  return Array.from(grouped.values()).sort((a, b) => a.userLabel.localeCompare(b.userLabel, 'de'))
 })
 
 const userSetSummary = computed(() => {
@@ -1185,6 +1427,8 @@ const passgenauigkeitChart = computed(() => {
 const userFavoriteMap = computed(() => {
   const map = new Map<number, string>()
   const latestSetByUser = new Map<number, number>()
+  const hasExplicitFavoriteFlag = analyticsRows.value.some((row) => typeof row.is_favorite === 'boolean')
+
   for (const row of analyticsRows.value) {
     if (!row.is_favorite) {
       continue
@@ -1199,6 +1443,50 @@ const userFavoriteMap = computed(() => {
       map.set(row.user_id, label)
     }
   }
+
+  // Fallback for older backend responses without is_favorite.
+  // Use only rated perfumes from each user's newest set to avoid misleading identical labels.
+  if (!hasExplicitFavoriteFlag) {
+    const latestSetIdByUser = new Map<number, number>()
+    for (const row of analyticsRows.value) {
+      const current = latestSetIdByUser.get(row.user_id) ?? -1
+      const setId = Number(row.user_sample_set_id || 0)
+      if (setId > current) {
+        latestSetIdByUser.set(row.user_id, setId)
+      }
+    }
+
+    const bestRowByUser = new Map<number, AdminRatingAnalyticsRow>()
+    for (const row of analyticsRows.value) {
+      const latestSetId = latestSetIdByUser.get(row.user_id)
+      if (!latestSetId || Number(row.user_sample_set_id || 0) !== latestSetId) {
+        continue
+      }
+
+      const hasAnyScore = [row.overall_score, row.longevity_score, row.sillage_score].some((value) => typeof value === 'number' && Number.isFinite(value))
+      if (!hasAnyScore) {
+        continue
+      }
+
+      const prev = bestRowByUser.get(row.user_id)
+      if (!prev) {
+        bestRowByUser.set(row.user_id, row)
+        continue
+      }
+
+      const prevScore = ((prev.overall_score ?? 0) * 100) + ((prev.longevity_score ?? 0) * 10) + (prev.sillage_score ?? 0)
+      const nextScore = ((row.overall_score ?? 0) * 100) + ((row.longevity_score ?? 0) * 10) + (row.sillage_score ?? 0)
+      if (nextScore > prevScore) {
+        bestRowByUser.set(row.user_id, row)
+      }
+    }
+
+    for (const [userId, row] of bestRowByUser.entries()) {
+      const label = row.brand_name ? `${row.brand_name} – ${row.perfume_name}` : row.perfume_name
+      map.set(userId, label)
+    }
+  }
+
   return map
 })
 
@@ -1307,14 +1595,7 @@ onUnmounted(() => {
               :class="activeTab === 'users' ? 'border-amber-400 bg-amber-400 text-stone-950' : 'border-stone-700 bg-stone-900 text-stone-200 hover:bg-stone-800'"
               @click="activeTab = 'users'"
             >
-              Nutzerübersicht
-            </button>
-            <button
-              class="rounded-xl border px-4 py-2 text-sm font-semibold transition"
-              :class="activeTab === 'ratings' ? 'border-amber-400 bg-amber-400 text-stone-950' : 'border-stone-700 bg-stone-900 text-stone-200 hover:bg-stone-800'"
-              @click="activeTab = 'ratings'"
-            >
-              Bewertungsdaten
+              Nutzer + Bewertungen
             </button>
           </div>
         </section>
@@ -1657,6 +1938,21 @@ onUnmounted(() => {
             </div>
           </div>
 
+          <div class="mt-4 grid gap-3 md:grid-cols-3">
+            <select v-model="analyticsSetId" class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5">
+              <option value="all">Alle Sample-Sets</option>
+              <option v-for="set in analyticsSetOptions" :key="`merged-aset-${set.id}`" :value="String(set.id)">{{ set.title }}</option>
+            </select>
+            <select v-model="analyticsUserId" class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5">
+              <option value="all">Alle User</option>
+              <option v-for="user in analyticsUserOptions" :key="`merged-auser-${user.id}`" :value="String(user.id)">{{ user.label }}</option>
+            </select>
+            <select v-model="analyticsPerfumeId" class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5">
+              <option value="all">Alle Düfte</option>
+              <option v-for="perfume in analyticsPerfumeOptions" :key="`merged-aperf-${perfume.id}`" :value="String(perfume.id)">{{ perfume.label }}</option>
+            </select>
+          </div>
+
           <div v-if="deleteUserError" class="mt-4 rounded-xl border border-red-800 bg-red-950/60 px-4 py-3 text-sm text-red-300">
             {{ deleteUserError }}
           </div>
@@ -1665,187 +1961,122 @@ onUnmounted(() => {
             Kein Nutzer zur Suche gefunden.
           </div>
 
-          <div v-else class="mt-5 overflow-hidden rounded-2xl border border-stone-800">
-            <table class="min-w-full divide-y divide-stone-800 text-sm">
-              <thead class="bg-stone-950/80 text-left text-stone-300">
-                <tr>
-                  <th class="px-4 py-3 font-semibold">ID</th>
-                  <th class="px-4 py-3 font-semibold">E-Mail</th>
-                  <th class="px-4 py-3 font-semibold">Name</th>
-                  <th class="px-4 py-3 font-semibold">Rolle</th>
-                  <th class="px-4 py-3 font-semibold">Sample-Set-Zuordnung</th>
-                  <th class="px-4 py-3 font-semibold">Favorit-Parfüm</th>
-                  <th class="px-4 py-3 font-semibold"></th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-stone-800 bg-stone-950/50 text-stone-200">
-                <tr v-for="user in filteredUsers" :key="user.id" class="hover:bg-stone-900/80">
-                  <td class="px-4 py-3">{{ user.id }}</td>
-                  <td class="px-4 py-3">{{ user.email || '-' }}</td>
-                  <td class="px-4 py-3">{{ [user.first_name, user.last_name].filter(Boolean).join(' ') || '-' }}</td>
-                  <td class="px-4 py-3">
-                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="user.is_admin ? 'bg-amber-400/20 text-amber-200' : 'bg-stone-800 text-stone-300'">
-                      {{ user.is_admin ? 'Admin' : 'User' }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div v-if="userAssignedSets(user).length" class="flex flex-wrap gap-1.5">
-                      <span
-                        v-for="setLabel in userAssignedSets(user)"
-                        :key="`${user.id}-${setLabel}`"
-                        class="rounded-full border border-sky-800/60 bg-sky-900/30 px-2.5 py-1 text-xs font-medium text-sky-200"
-                      >
-                        {{ setLabel }}
-                      </span>
-                    </div>
-                    <span v-else class="text-stone-600">Keine Zuweisung</span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <span
-                      v-if="userFavoriteMap.get(user.id)"
-                      class="inline-flex items-center gap-1.5 rounded-full border border-amber-700/50 bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-300"
-                    >
-                      <span class="text-amber-400">★</span>
-                      {{ userFavoriteMap.get(user.id) }}
-                    </span>
-                    <span v-else class="text-stone-600">–</span>
-                  </td>
-                  <td class="px-4 py-3 text-right">
-                    <button
-                      :disabled="deletingUserId === user.id"
-                      class="rounded-lg border border-red-800 bg-red-950/60 px-3 py-1 text-xs font-semibold text-red-300 transition hover:bg-red-900/80 disabled:opacity-50"
-                      @click="handleDeleteUser(user.id, user.email)"
-                    >
-                      {{ deletingUserId === user.id ? '…' : 'Löschen' }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section v-if="activeTab === 'ratings'" class="rounded-3xl border border-stone-800 bg-stone-900/75 p-6 shadow-2xl">
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h2 class="text-2xl font-semibold">Auswertung 2. Fragebogen</h2>
-              <p class="mt-1 text-sm text-stone-400">Alle Antworten aus Sample-Bewertungen inkl. Passgenauigkeit und Duftfamilien.</p>
-            </div>
-            <span class="rounded-full border border-stone-700 bg-stone-950 px-3 py-1 text-xs font-semibold text-stone-300">
-              {{ filteredAnalyticsRows.length }} Datensätze
-            </span>
-          </div>
-
-          <div class="mt-4 grid gap-3 md:grid-cols-3">
-            <select v-model="analyticsSetId" class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5">
-              <option value="all">Alle Sample-Sets</option>
-              <option v-for="set in analyticsSetOptions" :key="`aset-${set.id}`" :value="String(set.id)">{{ set.title }}</option>
-            </select>
-            <select v-model="analyticsUserId" class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5">
-              <option value="all">Alle User</option>
-              <option v-for="user in analyticsUserOptions" :key="`auser-${user.id}`" :value="String(user.id)">{{ user.label }}</option>
-            </select>
-            <select v-model="analyticsPerfumeId" class="rounded-xl border border-stone-700 bg-stone-950 px-4 py-2.5">
-              <option value="all">Alle Düfte</option>
-              <option v-for="perfume in analyticsPerfumeOptions" :key="`aperf-${perfume.id}`" :value="String(perfume.id)">{{ perfume.label }}</option>
-            </select>
-          </div>
-
-          <div v-if="analyticsLoading" class="mt-5 rounded-2xl border border-stone-800 bg-stone-950/60 p-5 text-sm text-stone-300">
-            Lade Bewertungsdaten...
-          </div>
-
-          <div v-else class="mt-5 space-y-6">
-            <div v-if="analyticsPerfumeId !== 'all'" class="grid gap-4 lg:grid-cols-2">
-              <article class="rounded-2xl border border-stone-800 bg-stone-950/60 p-4">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-stone-300">Passgenauigkeit (1-5)</h3>
-                <div class="mt-3 space-y-2">
-                  <div v-for="bar in passgenauigkeitChart" :key="`pm-${bar.label}`" class="grid grid-cols-[52px_1fr_40px] items-center gap-3 text-xs text-stone-300">
-                    <span>{{ bar.label }}</span>
-                    <div class="h-2 overflow-hidden rounded bg-stone-800">
-                      <div class="h-full bg-amber-400" :style="{ width: bar.width }" />
-                    </div>
-                    <span class="text-right">{{ bar.count }}</span>
-                  </div>
-                </div>
-              </article>
-
-              <article class="rounded-2xl border border-stone-800 bg-stone-950/60 p-4">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-stone-300">Duftfamilien (Nennungen)</h3>
-                <div class="mt-3 space-y-2">
-                  <div v-if="!duftfamilienChart.length" class="text-xs text-stone-400">Keine Duftfamilien-Antworten für diesen Filter.</div>
-                  <div v-for="bar in duftfamilienChart" :key="`df-${bar.label}`" class="grid grid-cols-[110px_1fr_40px] items-center gap-3 text-xs text-stone-300">
-                    <span class="truncate">{{ bar.label }}</span>
-                    <div class="h-2 overflow-hidden rounded bg-stone-800">
-                      <div class="h-full bg-emerald-400" :style="{ width: bar.width }" />
-                    </div>
-                    <span class="text-right">{{ bar.count }}</span>
-                  </div>
-                </div>
-              </article>
+          <article class="mt-6 rounded-2xl border border-stone-800 bg-stone-950/60 p-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-stone-300">Bewertungen + Favorit je Nutzer und Set</h3>
+              <span class="rounded-full border border-stone-700 bg-stone-900 px-3 py-1 text-xs font-semibold text-stone-300">
+                {{ filteredAnalyticsRows.length }} Datensätze
+              </span>
             </div>
 
-            <article class="rounded-2xl border border-stone-800 bg-stone-950/60 p-4">
-              <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-stone-300">User × Set Übersicht (Passgenauigkeit je Duft)</h3>
-              <div v-if="!userSetSummary.length" class="mt-3 text-sm text-stone-400">Keine Bewertungsdaten für den aktuellen Filter.</div>
-              <div v-else class="mt-3 overflow-auto">
-                <table class="min-w-full divide-y divide-stone-800 text-sm">
-                  <thead class="bg-stone-950/80 text-left text-stone-300">
-                    <tr>
-                      <th class="px-3 py-2 font-semibold">User</th>
-                      <th class="px-3 py-2 font-semibold">Sample-Set</th>
-                      <th class="px-3 py-2 font-semibold">Düfte / Passgenauigkeit</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-stone-800 bg-stone-950/40 text-stone-200">
-                    <tr v-for="row in userSetSummary" :key="`summary-${row.userId}-${row.setId}-${row.userLabel}`" class="align-top">
-                      <td class="px-3 py-2">{{ row.userLabel }}</td>
-                      <td class="px-3 py-2">{{ row.setTitle }}</td>
-                      <td class="px-3 py-2">
-                        <div class="flex flex-wrap gap-2">
-                          <span v-for="entry in row.entries" :key="`${row.userId}-${row.setId}-${entry.perfumeLabel}`" class="rounded-full border border-stone-700 bg-stone-900 px-2.5 py-1 text-xs">
-                            {{ entry.perfumeLabel }}: {{ entry.passgenauigkeit ? `${entry.passgenauigkeit}/5` : '-' }}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </article>
+            <div v-if="analyticsLoading" class="mt-4 rounded-xl border border-stone-800 bg-stone-900/60 p-4 text-sm text-stone-300">
+              Lade Bewertungsdaten...
+            </div>
 
-            <article class="rounded-2xl border border-stone-800 bg-stone-950/60 p-4">
-              <h3 class="text-sm font-semibold uppercase tracking-[0.15em] text-stone-300">Einzelbewertungen als Liste pro Parfüm</h3>
-              <div v-if="!ratingsByPerfume.length" class="mt-3 text-sm text-stone-400">Keine Einzelbewertungen für den aktuellen Filter.</div>
-              <div v-else class="mt-3 space-y-4">
-                <article v-for="group in ratingsByPerfume" :key="`perf-group-${group.perfumeId}`" class="rounded-xl border border-stone-800 bg-stone-900/50 p-3">
-                  <h4 class="text-sm font-semibold text-amber-300">{{ group.perfumeLabel }}</h4>
-                  <div class="mt-2 space-y-2">
-                    <div
-                      v-for="entry in group.rows"
-                      :key="`entry-${group.perfumeId}-${entry.ratingId}`"
-                      class="rounded-lg border border-stone-800 bg-stone-950/70 p-2 text-xs text-stone-200"
-                    >
-                      <p><span class="text-stone-400">User:</span> {{ entry.userLabel }}</p>
-                      <p><span class="text-stone-400">Set:</span> {{ entry.setTitle }}</p>
-                      <p><span class="text-stone-400">Gesamt-Score:</span> {{ entry.overallScore ?? '-' }} · <span class="text-stone-400">Passgenauigkeit:</span> {{ entry.passgenauigkeit ? `${entry.passgenauigkeit}/5` : '-' }}</p>
-                      <p><span class="text-stone-400">Duftfamilien:</span> {{ entry.duftfamilien.length ? entry.duftfamilien.join(', ') : '-' }}</p>
-                      <div class="mt-1.5 rounded-md border border-stone-800 bg-stone-900/70 p-2">
-                        <p class="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-stone-400">Alle Antworten</p>
-                        <div v-if="entry.allAnswers.length" class="grid gap-1">
-                          <p v-for="answer in entry.allAnswers" :key="`ans-${entry.ratingId}-${answer.key}`" class="text-[11px] text-stone-200">
-                            <span class="text-stone-400">{{ answer.label }}:</span> {{ answer.value }}
-                          </p>
-                        </div>
-                        <p v-else class="text-[11px] text-stone-500">Keine Detailantworten gespeichert.</p>
+            <div v-else-if="!userSetRatings.length" class="mt-4 rounded-xl border border-stone-800 bg-stone-900/60 p-4 text-sm text-stone-400">
+              Keine Bewertungsdaten für den aktuellen Filter.
+            </div>
+
+            <div v-else class="mt-4 space-y-4">
+              <article
+                v-for="userEntry in userSetRatings"
+                :key="`merged-user-${userEntry.userId}`"
+                class="rounded-xl border border-stone-800 bg-stone-900/50 p-4"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h4 class="text-sm font-semibold text-amber-300">{{ userEntry.userLabel }}</h4>
+                    <p class="mt-1 text-xs text-stone-400">ID {{ userEntry.userId }}</p>
+                  </div>
+                  <button
+                    :disabled="deletingUserId === userEntry.userId"
+                    class="rounded-lg border border-red-800 bg-red-950/60 px-3 py-1.5 text-xs font-semibold text-red-300 transition hover:bg-red-900/80 disabled:opacity-50"
+                    @click="handleDeleteUser(userEntry.userId, userEntry.userEmail)"
+                  >
+                    {{ deletingUserId === userEntry.userId ? 'Löscht…' : 'Nutzer löschen' }}
+                  </button>
+                </div>
+
+                <div class="mt-3 space-y-3">
+                  <details
+                    v-for="setEntry in userEntry.sets"
+                    :key="`merged-user-${userEntry.userId}-set-${setEntry.userSampleSetId}`"
+                    class="rounded-lg border border-stone-800 bg-stone-950/70"
+                  >
+                    <summary class="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 p-3 marker:hidden">
+                      <div class="min-w-0">
+                        <p class="text-sm font-semibold text-stone-100">
+                          {{ setEntry.setTitle }}
+                          <span class="ml-2 text-xs font-medium text-stone-400">#{{ setEntry.userSampleSetId }}</span>
+                        </p>
+                        <p class="mt-1 text-xs text-stone-400">{{ setEntry.ratedCount }} von {{ setEntry.totalCount }} Parfums bewertet</p>
                       </div>
-                      <p><span class="text-stone-400">Bewertet am:</span> {{ entry.ratedAt }}</p>
+                      <div class="flex items-center gap-2">
+                        <span v-if="setEntry.setStatus" class="rounded-full border border-stone-700 bg-stone-900 px-2.5 py-1 text-[11px] font-semibold text-stone-300">
+                          {{ setEntry.setStatus }}
+                        </span>
+                        <span class="rounded-lg border border-stone-600 bg-stone-900 px-3 py-1 text-xs font-semibold text-stone-200">Anzeigen</span>
+                      </div>
+                    </summary>
+
+                    <div class="px-3 pb-3">
+                      <div class="mt-2">
+                        <span
+                          v-if="setEntry.favoriteLabel"
+                          class="inline-flex items-center gap-1.5 rounded-full border border-amber-700/50 bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-300"
+                        >
+                          <span class="text-amber-400">★</span>
+                          Favorit: {{ setEntry.favoriteLabel }}
+                        </span>
+                        <span v-else class="text-xs text-stone-500">Kein Favorit gesetzt</span>
+                      </div>
+
+                      <div class="mt-3 overflow-auto">
+                        <table class="min-w-full divide-y divide-stone-800 text-xs">
+                          <thead class="bg-stone-900/70 text-left text-stone-400">
+                            <tr>
+                              <th class="px-2 py-1.5 font-semibold">Duft</th>
+                              <th class="px-2 py-1.5 font-semibold">Gesamt</th>
+                              <th class="px-2 py-1.5 font-semibold">Passgenauigkeit</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-stone-800 text-stone-200">
+                            <template v-for="rating in setEntry.ratings" :key="`merged-rating-${setEntry.userSampleSetId}-${rating.perfumeId}`">
+                              <tr>
+                                <td class="px-2 py-1.5">
+                                  <span v-if="rating.isFavorite" class="mr-1 text-amber-400">★</span>{{ rating.perfumeLabel }}
+                                </td>
+                                <td class="px-2 py-1.5">{{ rating.overallScore ?? '-' }}</td>
+                                <td class="px-2 py-1.5">{{ rating.passgenauigkeit ? `${rating.passgenauigkeit}/5` : '-' }}</td>
+                              </tr>
+                              <tr>
+                                <td colspan="3" class="px-2 pb-2">
+                                  <details class="rounded-md border border-stone-800 bg-stone-900/60 px-2 py-1.5">
+                                    <summary class="cursor-pointer list-none text-[11px] font-semibold text-stone-300 marker:hidden">
+                                      Alle Antworten anzeigen
+                                    </summary>
+                                    <div class="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                                      <p
+                                        v-for="answer in rating.allAnswers"
+                                        :key="`merged-answer-${setEntry.userSampleSetId}-${rating.perfumeId}-${answer.key}`"
+                                        class="text-[11px] leading-snug text-stone-300"
+                                      >
+                                        <span class="text-stone-500">{{ answer.label }}:</span> {{ answer.value }}
+                                      </p>
+                                    </div>
+                                  </details>
+                                </td>
+                              </tr>
+                            </template>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                </article>
-              </div>
-            </article>
-          </div>
+                  </details>
+                </div>
+              </article>
+            </div>
+          </article>
         </section>
       </div>
     </div>

@@ -272,7 +272,7 @@ onMounted(() => {
     <div class="nc-page-frame flex flex-1 flex-col">
       <SiteHeaderNav title="Parfum-Kuration" active="duftkuration" />
 
-      <div class="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 pb-8 sm:px-6">
+      <div class="flex w-full flex-1 flex-col pb-8">
         <div class="mt-4 rounded-[30px] border border-white/70 bg-white/75 p-5 shadow-[0_22px_55px_rgba(79,61,31,0.10)] backdrop-blur sm:p-8">
           <div class="mb-6 space-y-3">
             <div class="flex items-center justify-between gap-4">

@@ -205,10 +205,39 @@ const deadlineCountdown = computed(() => {
   const seconds = totalSeconds % 60
 
   if (days > 0) {
-    return `Noch ${days}T ${hours}Std ${minutes}Min`
+    return `${days}T ${hours}Std ${minutes}Min`
   }
 
-  return `Noch ${hours}Std ${minutes}Min ${seconds}Sek`
+  return ` ${hours}Std ${minutes}Min ${seconds}Sek`
+})
+
+const deadlineSecondsRemaining = computed(() => {
+  if (!deadlineDate.value) return null
+  return Math.floor((deadlineDate.value.getTime() - nowTs.value) / 1000)
+})
+
+const deadlineUrgency = computed<'none' | 'normal' | 'soon' | 'urgent' | 'expired'>(() => {
+  if (!deadlineDate.value) return 'none'
+  if (isDeadlineExpired.value) return 'expired'
+
+  const seconds = deadlineSecondsRemaining.value ?? 0
+  const hours = seconds / 3600
+  if (hours <= 6) return 'urgent'
+  if (hours <= 24) return 'soon'
+  return 'normal'
+})
+
+const deadlineTimerClass = computed(() => {
+  if (deadlineUrgency.value === 'expired') {
+    return 'bg-red-100 text-red-700 ring-2 ring-red-200'
+  }
+  if (deadlineUrgency.value === 'urgent') {
+    return 'bg-red-50 text-red-700 ring-2 ring-red-200 animate-pulse'
+  }
+  if (deadlineUrgency.value === 'soon') {
+    return 'bg-orange-100 text-orange-800 ring-2 ring-orange-200'
+  }
+  return 'bg-amber-100 text-amber-900 ring-1 ring-amber-200'
 })
 
 // Helper: store tie-breaker selection locally (fallback when API not available)
@@ -737,11 +766,12 @@ onUnmounted(() => {
 
     <div v-else-if="showOverview && hasPerfumes" class="nc-page">
       <div class="nc-page-frame">
-        <SiteHeaderNav title="Ihre Samples" active="samples" />
-
         <div class="mx-auto w-full max-w-6xl">
+          <SiteHeaderNav title="Ihre Samples" active="samples" />
+
+        <div class="w-full">
           <section class="mb-8 rounded-4xl border border-white/70 bg-white/72 p-6 shadow-[0_18px_50px_rgba(62,45,20,0.08)] backdrop-blur md:p-8">
-            <div class="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div class="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
               <div class="max-w-3xl">
                 <p class="text-xs font-semibold uppercase tracking-[0.24em] text-[#8b6c2d]">Sampleset Übersicht</p>
                 <h1 class="mt-2 text-4xl leading-tight md:text-6xl">{{ sampleSet?.title || 'Ihre Samples' }}</h1>
@@ -750,15 +780,17 @@ onUnmounted(() => {
                 </p>
               </div>
 
-              <div class="flex flex-col gap-2 text-sm md:items-end">
-                <span class="inline-flex w-fit rounded-full border border-[#d8ccb0] bg-[#fbf7ef] px-3 py-1 font-medium text-[#5b4a32]">
-                  {{ ratedPerfumeProgressLabel }}
-                </span>
-                <span class="inline-flex w-fit rounded-full px-3 py-1 font-semibold" :class="isDeadlineExpired ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-900'">
-                  {{ deadlineCountdown }}
-                </span>
-                <span class="text-xs uppercase tracking-[0.18em] text-[#7f6a4c]">Frist: {{ deadlineLabel }}</span>
+              <div class="flex flex-col gap-2 text-sm md:items-end md:self-start">
+                
+                <div class="w-full space-y-1 max-w-md rounded-xl px-2.5 py-1.5" :class="deadlineTimerClass">
+                  <p class="text-[9px] font-semibold uppercase tracking-[0.14em] opacity-75">Timer</p>
+                  <p class="text-sm font-bold leading-none md:text-base">{{ deadlineCountdown }}</p>
+                  <p class="text-[10px] pt-0.5 font-medium leading-none opacity-80">Frist: {{ deadlineLabel }}</p>
+                </div>
               </div>
+            </div>
+            <div class="mt-4 inline-flex w-fit rounded-full border border-[#d8ccb0] bg-[#fbf7ef] px-3 py-1 font-medium text-[#5b4a32]">
+              {{ ratedPerfumeProgressLabel }}
             </div>
           </section>
 
@@ -843,6 +875,7 @@ onUnmounted(() => {
             </article>
           </div>
         </div>
+        </div>
       </div>
     </div>
 
@@ -850,6 +883,16 @@ onUnmounted(() => {
     <div v-else-if="currentPerfume" class="nc-page flex flex-col">
       <div class="nc-page-frame flex flex-1 flex-col">
         <SiteHeaderNav title="Ihre Samples" active="samples" />
+
+        <div class="mb-4 flex justify-end">
+          <div class="w-full max-w-md rounded-xl px-2.5 py-1.5" :class="deadlineTimerClass">
+            <p class="text-[9px] font-semibold uppercase tracking-[0.14em] opacity-75">Timer</p>
+            <div class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <p class="text-sm font-bold leading-none md:text-base">{{ deadlineCountdown }}</p>
+              <p class="text-[10px] font-medium leading-none opacity-80">Frist: {{ deadlineLabel }}</p>
+            </div>
+          </div>
+        </div>
 
         <div class="mx-auto flex w-full max-w-4xl flex-1 flex-col">
           <div class="mb-6 rounded-[30px] border border-white/70 bg-white/72 p-5 shadow-[0_18px_40px_rgba(62,45,20,0.08)] backdrop-blur md:p-6">

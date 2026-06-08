@@ -188,7 +188,7 @@ onMounted(loadData)
     <div class="nc-page-frame relative">
       <SiteHeaderNav title="Parfum" active="parfum" />
 
-      <section class="mx-auto max-w-6xl px-4 pb-6 pt-2 sm:px-6 lg:px-8">
+      <section class="w-full pb-6 pt-2">
         <div class="space-y-4">
           <span class="inline-flex rounded-full border border-[#d8ccb0] bg-white/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#8b6c2d] shadow-sm backdrop-blur">
             Duftkatalog
@@ -204,7 +204,7 @@ onMounted(loadData)
         </div>
       </section>
 
-      <section class="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8">
+      <section class="w-full pb-16">
         <div class="rounded-3xl border border-stone-200/70 bg-white/85 p-5 shadow-[0_20px_50px_rgba(79,61,31,0.08)] backdrop-blur sm:p-6">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
